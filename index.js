@@ -468,6 +468,49 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     }
 })
 
+// Public stats endpoint (no auth required) for debugging
+app.get('/api/public-stats', async (req, res) => {
+    try {
+        console.log("📊 Public stats request")
+        
+        // Get all emails from database (for debugging)
+        const allEmails = await new Promise((resolve, reject) => {
+            database.db.all("SELECT * FROM emails LIMIT 10", (err, rows) => {
+                if (err) reject(err)
+                else resolve(rows)
+            })
+        })
+        
+        const allUsers = await new Promise((resolve, reject) => {
+            database.db.all("SELECT * FROM users", (err, rows) => {
+                if (err) reject(err)
+                else resolve(rows)
+            })
+        })
+        
+        const allAccounts = await new Promise((resolve, reject) => {
+            database.db.all("SELECT * FROM email_accounts", (err, rows) => {
+                if (err) reject(err)
+                else resolve(rows)
+            })
+        })
+        
+        res.json({
+            debug: true,
+            totalEmails: allEmails.length,
+            totalUsers: allUsers.length,
+            totalAccounts: allAccounts.length,
+            sampleEmails: allEmails.slice(0, 3),
+            users: allUsers,
+            accounts: allAccounts,
+            environment: process.env.NODE_ENV
+        })
+    } catch (error) {
+        console.error('Public stats error:', error)
+        res.status(500).json({ error: error.message })
+    }
+})
+
 // Add sample emails for testing
 app.post('/api/add-sample-emails', authenticateToken, async (req, res) => {
     try {
