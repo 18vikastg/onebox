@@ -17,7 +17,7 @@
     "express-session": "^1.18.2",
     "imap": "^0.8.19",
     "jsonwebtoken": "^9.0.2",
-    "mailparser": "^3.6.5",
+    "mailparser": "^3.7.4",
     "node-fetch": "^2.7.0",
     "sqlite3": "^5.1.7"
   }
