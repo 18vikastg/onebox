@@ -1,0 +1,94 @@
+{
+  "name": "ReachInbox Email Management Platform",
+  "description": "Full-stack email management platform with AI-powered classification, real-time synchronization, and intelligent automation",
+  "repository": "https://github.com/your-username/reachinbox",
+  "services": [
+    {
+      "name": "web",
+      "source": {
+        "type": "image",
+        "image": "node:18-alpine"
+      },
+      "build": {
+        "buildCommand": "npm install",
+        "startCommand": "npm start"
+      },
+      "variables": {
+        "NODE_ENV": "production",
+        "PORT": "4000"
+      },
+      "domains": [
+        {
+          "host": "reachinbox.railway.app"
+        }
+      ]
+    },
+    {
+      "name": "email-sync",
+      "source": {
+        "type": "image", 
+        "image": "python:3.11-slim"
+      },
+      "build": {
+        "buildCommand": "pip install -r requirements.txt",
+        "startCommand": "python email_sync_service.py"
+      },
+      "variables": {
+        "PYTHONPATH": "."
+      }
+    },
+    {
+      "name": "elasticsearch",
+      "source": {
+        "type": "image",
+        "image": "docker.elastic.co/elasticsearch/elasticsearch:8.12.0"
+      },
+      "variables": {
+        "discovery.type": "single-node",
+        "xpack.security.enabled": "false",
+        "ES_JAVA_OPTS": "-Xms512m -Xmx512m"
+      }
+    },
+    {
+      "name": "redis",
+      "source": {
+        "type": "image",
+        "image": "redis:7-alpine"
+      }
+    }
+  ],
+  "variables": {
+    "GMAIL_PRIMARY_EMAIL": {
+      "description": "Your primary Gmail address",
+      "required": true
+    },
+    "GMAIL_PRIMARY_PASSWORD": {
+      "description": "Gmail App Password (not regular password)",
+      "required": true
+    },
+    "OPENAI_API_KEY": {
+      "description": "OpenAI API key for AI features",
+      "required": true
+    },
+    "GMAIL_SECONDARY_EMAIL": {
+      "description": "Secondary Gmail address (optional)",
+      "required": false
+    },
+    "GMAIL_SECONDARY_PASSWORD": {
+      "description": "Secondary Gmail App Password (optional)",
+      "required": false
+    },
+    "RAG_ENABLED": {
+      "description": "Enable RAG AI reply suggestions",
+      "default": "true"
+    },
+    "AI_CLASSIFICATION_ENABLED": {
+      "description": "Enable AI email classification",
+      "default": "false"
+    }
+  },
+  "scripts": {
+    "build": "npm install && pip install -r requirements.txt",
+    "start": "npm start"
+  }
+}

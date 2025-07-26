@@ -1,0 +1,11 @@
+openai==0.28.1
+elasticsearch==8.15.1
+chromadb==0.4.22
+sentence-transformers==2.2.2
+requests==2.31.0
+python-dotenv==1.0.0
+redis==5.0.1
+imaplib2==3.6
+email-validator==2.1.0
+beautifulsoup4==4.12.2
+python-dateutil==2.8.2
