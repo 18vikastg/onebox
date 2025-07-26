@@ -40,119 +40,132 @@ async function syncEmailsForUser(userId) {
 
 async function syncEmailsFromAccount(userId, account) {
     return new Promise((resolve, reject) => {
-        const imap = new Imap({
-            user: account.email,
-            password: account.password,
-            host: account.imap_host || 'imap.gmail.com',
-            port: account.imap_port || 993,
-            tls: true,
-            tlsOptions: { rejectUnauthorized: false }
-        })
-
-        imap.once('ready', () => {
-            console.log(`📧 IMAP connected for ${account.email}`)
-            
-            imap.openBox('INBOX', false, (err, box) => {
-                if (err) {
-                    console.error('Error opening inbox:', err)
-                    return reject(err)
+        // Get account details with password from database
+        database.db.get(
+            'SELECT * FROM email_accounts WHERE id = ? AND user_id = ?',
+            [account.id, userId],
+            (err, fullAccount) => {
+                if (err || !fullAccount) {
+                    console.error('Error getting account details:', err);
+                    return reject(err || new Error('Account not found'));
                 }
 
-                // Search for emails from last 30 days
-                const since = new Date()
-                since.setDate(since.getDate() - 30)
-                const searchCriteria = ['UNSEEN', ['SINCE', since]]
+                const imap = new Imap({
+                    user: fullAccount.email,
+                    password: fullAccount.password.replace(/\s/g, ''), // Remove spaces from app password
+                    host: fullAccount.imap_host || 'imap.gmail.com',
+                    port: fullAccount.imap_port || 993,
+                    tls: true,
+                    tlsOptions: { rejectUnauthorized: false },
+                    authTimeout: 3000,
+                    connTimeout: 10000
+                })
 
-                imap.search(searchCriteria, (err, results) => {
-                    if (err) {
-                        console.error('Search error:', err)
-                        return reject(err)
-                    }
+                imap.once('ready', () => {
+                    console.log(`📧 IMAP connected for ${fullAccount.email}`)
+                    
+                    imap.openBox('INBOX', false, (err, box) => {
+                        if (err) {
+                            console.error('Error opening inbox:', err)
+                            return reject(err)
+                        }
 
-                    if (!results || results.length === 0) {
-                        console.log(`No new emails for ${account.email}`)
-                        imap.end()
-                        return resolve()
-                    }
+                        // Search for emails from last 30 days (read and unread)
+                        const since = new Date()
+                        since.setDate(since.getDate() - 30)
+                        const searchCriteria = [['SINCE', since]]
 
-                    console.log(`Found ${results.length} new emails for ${account.email}`)
+                        imap.search(searchCriteria, (err, results) => {
+                            if (err) {
+                                console.error('Search error:', err)
+                                return reject(err)
+                            }
 
-                    const fetch = imap.fetch(results, { bodies: '', struct: true })
-                    let processedCount = 0
+                            if (!results || results.length === 0) {
+                                console.log(`No new emails for ${fullAccount.email}`)
+                                imap.end()
+                                return resolve()
+                            }
 
-                    fetch.on('message', (msg, seqno) => {
-                        msg.on('body', (stream, info) => {
-                            let buffer = ''
-                            stream.on('data', (chunk) => {
-                                buffer += chunk.toString('utf8')
+                            console.log(`Found ${results.length} new emails for ${fullAccount.email}`)
+
+                            const fetch = imap.fetch(results, { bodies: '', struct: true })
+                            let processedCount = 0
+
+                            fetch.on('message', (msg, seqno) => {
+                                msg.on('body', (stream, info) => {
+                                    let buffer = ''
+                                    stream.on('data', (chunk) => {
+                                        buffer += chunk.toString('utf8')
+                                    })
+                                    stream.once('end', async () => {
+                                        try {
+                                            const parsed = await simpleParser(buffer)
+                                            
+                                            // Store email in database
+                                            const emailData = {
+                                                subject: parsed.subject || 'No Subject',
+                                                sender: parsed.from?.text || 'Unknown',
+                                                snippet: parsed.text?.substring(0, 200) || 'No content',
+                                                content: parsed.text || parsed.html || 'No content',
+                                                received_at: parsed.date || new Date(),
+                                                user_id: userId,
+                                                email_account: fullAccount.email,
+                                                category: 'inbox' // Default category
+                                            }
+
+                                            // Classify email using AI if available
+                                            try {
+                                                const classification = await classifyEmail(emailData.content)
+                                                emailData.category = classification || 'general'
+                                            } catch (classifyError) {
+                                                console.log('Classification failed, using default category')
+                                            }
+
+                                            await database.addEmail(emailData)
+                                            console.log(`📧 Stored email: ${emailData.subject}`)
+                                            
+                                            processedCount++
+                                            if (processedCount === results.length) {
+                                                imap.end()
+                                                resolve()
+                                            }
+                                        } catch (parseError) {
+                                            console.error('Error parsing email:', parseError)
+                                            processedCount++
+                                            if (processedCount === results.length) {
+                                                imap.end()
+                                                resolve()
+                                            }
+                                        }
+                                    })
+                                })
                             })
-                            stream.once('end', async () => {
-                                try {
-                                    const parsed = await simpleParser(buffer)
-                                    
-                                    // Store email in database
-                                    const emailData = {
-                                        subject: parsed.subject || 'No Subject',
-                                        sender: parsed.from?.text || 'Unknown',
-                                        snippet: parsed.text?.substring(0, 200) || 'No content',
-                                        content: parsed.text || parsed.html || 'No content',
-                                        received_at: parsed.date || new Date(),
-                                        user_id: userId,
-                                        email_account: account.email,
-                                        category: 'inbox', // Default category
-                                        is_read: false
-                                    }
 
-                                    // Classify email using AI if available
-                                    try {
-                                        const classification = await classifyEmail(emailData.content)
-                                        emailData.category = classification || 'general'
-                                    } catch (classifyError) {
-                                        console.log('Classification failed, using default category')
-                                    }
+                            fetch.once('error', (err) => {
+                                console.error('Fetch error:', err)
+                                reject(err)
+                            })
 
-                                    await database.addEmail(emailData)
-                                    console.log(`📧 Stored email: ${emailData.subject}`)
-                                    
-                                    processedCount++
-                                    if (processedCount === results.length) {
-                                        imap.end()
-                                        resolve()
-                                    }
-                                } catch (parseError) {
-                                    console.error('Error parsing email:', parseError)
-                                    processedCount++
-                                    if (processedCount === results.length) {
-                                        imap.end()
-                                        resolve()
-                                    }
-                                }
+                            fetch.once('end', () => {
+                                console.log(`Finished fetching emails for ${fullAccount.email}`)
                             })
                         })
                     })
-
-                    fetch.once('error', (err) => {
-                        console.error('Fetch error:', err)
-                        reject(err)
-                    })
-
-                    fetch.once('end', () => {
-                        console.log(`Finished fetching emails for ${account.email}`)
-                    })
                 })
-            })
-        })
 
-        imap.once('error', (err) => {
-            console.error('IMAP connection error:', err)
-            reject(err)
-        })
+                imap.once('error', (err) => {
+                    console.error('IMAP connection error:', err)
+                    reject(err)
+                })
 
-        imap.once('end', () => {
-            console.log(`IMAP connection ended for ${account.email}`)
-        })
+                imap.once('end', () => {
+                    console.log(`IMAP connection ended for ${fullAccount.email}`)
+                })
 
-        imap.connect()
+                imap.connect()
+            }
+        )
     })
 }
 

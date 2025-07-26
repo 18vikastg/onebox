@@ -99,6 +99,19 @@ class Database {
         });
     }
 
+    async getAllUsers() {
+        return new Promise((resolve, reject) => {
+            this.db.all(
+                'SELECT id, email, name, created_at FROM users',
+                [],
+                (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                }
+            );
+        });
+    }
+
     // Email account methods
     async addEmailAccount(userId, accountData) {
         return new Promise((resolve, reject) => {
@@ -150,6 +163,36 @@ class Database {
                  (user_id, account_id, uid, subject, sender, content, category, confidence_score, date_received) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [userId, accountId, uid, subject, sender, content, category, confidence_score, date_received],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve({ id: this.lastID, ...emailData });
+                }
+            );
+        });
+    }
+
+    async addEmail(emailData) {
+        return new Promise((resolve, reject) => {
+            const { 
+                subject, 
+                sender, 
+                snippet, 
+                content, 
+                received_at, 
+                user_id, 
+                email_account, 
+                category, 
+                is_read 
+            } = emailData;
+            
+            // Generate a unique UID from content hash
+            const uid = require('crypto').createHash('md5').update(content + sender + subject).digest('hex');
+            
+            this.db.run(
+                `INSERT OR REPLACE INTO emails 
+                 (user_id, account_id, uid, subject, sender, content, category, confidence_score, date_received, is_read) 
+                 VALUES (?, 1, ?, ?, ?, ?, ?, 0.8, ?, ?)`,
+                [user_id, uid, subject, sender, content, category, received_at, is_read ? 1 : 0],
                 function(err) {
                     if (err) reject(err);
                     else resolve({ id: this.lastID, ...emailData });
