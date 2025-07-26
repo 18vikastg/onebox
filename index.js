@@ -952,7 +952,60 @@ app.post('/api/test-sync', async (req, res) => {
     }
 })
 
+// Auto-sync emails on server startup in production
+async function initializeEmailSync() {
+    if (process.env.NODE_ENV === 'production') {
+        console.log("🚀 Production mode detected - starting automatic email sync...")
+        
+        try {
+            // Get or create default user for production
+            let user = await database.getUserByEmail('admin@production.local')
+            if (!user) {
+                user = await database.addUser('admin@production.local', 'production123')
+                console.log("👤 Created production admin user:", user.id)
+            }
+            
+            // Add email accounts for the user
+            let account1 = await database.getUserEmailAccounts(user.id)
+            if (account1.length === 0) {
+                account1 = await database.addEmailAccount(user.id, process.env.GMAIL_PRIMARY_EMAIL)
+                console.log("📧 Added primary email account:", account1.id)
+            }
+            
+            if (process.env.GMAIL_SECONDARY_EMAIL) {
+                let account2 = account1.find(acc => acc.email === process.env.GMAIL_SECONDARY_EMAIL)
+                if (!account2) {
+                    account2 = await database.addEmailAccount(user.id, process.env.GMAIL_SECONDARY_EMAIL)
+                    console.log("📧 Added secondary email account:", account2.id)
+                }
+            }
+            
+            // Start email sync after a delay to let server fully initialize
+            setTimeout(async () => {
+                console.log("📬 Starting automatic email sync...")
+                
+                try {
+                    const result = await syncEmailsFromAccount({
+                        email: process.env.GMAIL_PRIMARY_EMAIL,
+                        password: process.env.GMAIL_PRIMARY_PASSWORD,
+                        userId: user.id
+                    })
+                    console.log("✅ Auto-sync completed:", result)
+                } catch (syncError) {
+                    console.error("❌ Auto-sync failed:", syncError.message)
+                }
+            }, 10000) // Wait 10 seconds after server start
+            
+        } catch (error) {
+            console.error("❌ Auto-sync initialization failed:", error)
+        }
+    }
+}
+
 app.listen(4000, () => {
     console.log("App is listening on port 4000")
     console.log("🚀 Email sync and RAG services initialized")
+    
+    // Initialize email sync for production
+    initializeEmailSync()
 })
