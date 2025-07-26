@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Email Accounts - ReachInbox</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .form-section {
+            margin-bottom: 2rem;
+        }
+        
+        .form-section h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .provider-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .provider-btn {
+            padding: 1rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .provider-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .provider-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            border-color: #ccc;
+        }
+        
+        .accounts-list {
+            margin-top: 2rem;
+        }
+        
+        .account-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 1rem;
+            background: #f8f9ff;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .account-info {
+            flex: 1;
+        }
+        
+        .account-email {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .account-provider {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .success {
+            background: #efe;
+            color: #363;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .skip-section {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e1e5e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Setup Your Email Accounts</h1>
+            <p>Connect your email accounts to start managing them with AI</p>
+        </div>
+
+        <div class="content">
+            <div id="message"></div>
+
+            <div class="form-section">
+                <h3>🔌 Add Email Account</h3>
+                
+                <div class="provider-buttons">
+                    <div class="provider-btn active" data-provider="gmail">
+                        <div style="font-size: 1.5rem;">📧</div>
+                        <div>Gmail</div>
+                    </div>
+                    <div class="provider-btn" data-provider="outlook">
+                        <div style="font-size: 1.5rem;">📮</div>
+                        <div>Outlook</div>
+                    </div>
+                    <div class="provider-btn" data-provider="yahoo">
+                        <div style="font-size: 1.5rem;">📨</div>
+                        <div>Yahoo</div>
+                    </div>
+                    <div class="provider-btn" data-provider="other">
+                        <div style="font-size: 1.5rem;">⚙️</div>
+                        <div>Other</div>
+                    </div>
+                </div>
+
+                <form id="emailForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="your.email@gmail.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">App Password / Password</label>
+                        <input type="password" id="password" name="password" placeholder="Your email password or app password" required>
+                        <small style="color: #666; font-size: 0.8rem;">
+                            For Gmail, use an App Password. For other providers, use your regular password.
+                        </small>
+                    </div>
+                    
+                    <div id="advancedSettings" style="display: none;">
+                        <div class="form-group">
+                            <label for="imapHost">IMAP Host</label>
+                            <input type="text" id="imapHost" name="imapHost" placeholder="imap.gmail.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="imapPort">IMAP Port</label>
+                            <input type="number" id="imapPort" name="imapPort" placeholder="993" value="993">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="addAccountBtn">
+                        Add Account
+                    </button>
+                    
+                    <button type="button" class="btn btn-outline" id="toggleAdvanced" style="margin-left: 1rem;">
+                        Advanced Settings
+                    </button>
+                </form>
+            </div>
+
+            <div class="accounts-list">
+                <h3>📝 Your Connected Accounts</h3>
+                <div id="accountsList">
+                    <p style="color: #666; text-align: center; padding: 2rem;">No accounts connected yet</p>
+                </div>
+            </div>
+
+            <div class="skip-section">
+                <p style="color: #666; margin-bottom: 1rem;">You can add more accounts later from your dashboard</p>
+                <a href="/dashboard" class="btn btn-primary">Continue to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProvider = 'gmail';
+        
+        // Provider presets
+        const providerSettings = {
+            gmail: { host: 'imap.gmail.com', port: 993 },
+            outlook: { host: 'outlook.office365.com', port: 993 },
+            yahoo: { host: 'imap.mail.yahoo.com', port: 993 },
+            other: { host: '', port: 993 }
+        };
+
+        // Provider selection
+        document.querySelectorAll('.provider-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentProvider = btn.dataset.provider;
+                
+                const settings = providerSettings[currentProvider];
+                document.getElementById('imapHost').value = settings.host;
+                document.getElementById('imapPort').value = settings.port;
+            });
+        });
+
+        // Toggle advanced settings
+        document.getElementById('toggleAdvanced').addEventListener('click', () => {
+            const advanced = document.getElementById('advancedSettings');
+            const btn = document.getElementById('toggleAdvanced');
+            
+            if (advanced.style.display === 'none') {
+                advanced.style.display = 'block';
+                btn.textContent = 'Hide Advanced';
+            } else {
+                advanced.style.display = 'none';
+                btn.textContent = 'Advanced Settings';
+            }
+        });
+
+        // Load existing accounts
+        async function loadAccounts() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/accounts', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayAccounts(data.accounts);
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        function displayAccounts(accounts) {
+            const list = document.getElementById('accountsList');
+            
+            if (accounts.length === 0) {
+                list.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No accounts connected yet</p>';
+                return;
+            }
+            
+            list.innerHTML = accounts.map(account => `
+                <div class="account-item">
+                    <div class="account-info">
+                        <div class="account-email">${account.email}</div>
+                        <div class="account-provider">${account.provider.toUpperCase()} • Added ${new Date(account.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <button class="btn btn-outline" onclick="removeAccount(${account.id})" style="background: #fee; color: #c33; border-color: #c33;">
+                        Remove
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function removeAccount(accountId) {
+            if (!confirm('Are you sure you want to remove this account?')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/accounts/${accountId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadAccounts();
+                    showMessage('Account removed successfully', 'success');
+                }
+            } catch (error) {
+                showMessage('Error removing account', 'error');
+            }
+        }
+
+        // Add account form
+        document.getElementById('emailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const addBtn = document.getElementById('addAccountBtn');
+            const messageDiv = document.getElementById('message');
+            
+            addBtn.disabled = true;
+            addBtn.textContent = 'Adding...';
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const imapHost = document.getElementById('imapHost').value || providerSettings[currentProvider].host;
+            const imapPort = document.getElementById('imapPort').value || providerSettings[currentProvider].port;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/accounts/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        imapHost,
+                        imapPort: parseInt(imapPort),
+                        provider: currentProvider
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Email account added successfully!', 'success');
+                    document.getElementById('emailForm').reset();
+                    loadAccounts();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Connection error. Please try again.', 'error');
+            }
+            
+            addBtn.disabled = false;
+            addBtn.textContent = 'Add Account';
+        });
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${text}</div>`;
+            
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Check authentication
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login';
+        }
+
+        // Load accounts on page load
+        loadAccounts();
+    </script>
+</body>
+</html>

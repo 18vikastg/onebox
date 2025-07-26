@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReachInbox - AI-Powered Email Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        
+        .btn-outline:hover {
+            background: white;
+            color: #667eea;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+        
+        .btn-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
+        .hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            opacity: 0.9;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            max-width: 1000px;
+            margin-top: 2rem;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature p {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">📧 ReachInbox</div>
+        <div class="nav-buttons">
+            <a href="/login" class="btn btn-outline">Login</a>
+            <a href="/register" class="btn btn-primary">Sign Up</a>
+        </div>
+    </header>
+
+    <main class="hero">
+        <h1>AI-Powered Email Management</h1>
+        <p>
+            Sync multiple IMAP accounts, categorize emails with AI, and never miss an important message. 
+            Built for professionals who need powerful email automation.
+        </p>
+        
+        <div class="cta-buttons">
+            <a href="/register" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
+                Get Started Free
+            </a>
+            <a href="#demo" class="btn btn-outline" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
+                View Demo
+            </a>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🔄 Real-Time Sync</h3>
+                <p>Connect multiple IMAP accounts and sync emails in real-time with persistent connections.</p>
+            </div>
+            <div class="feature">
+                <h3>🤖 AI Classification</h3>
+                <p>Automatically categorize emails as Interested, Spam, Meeting Booked, and more.</p>
+            </div>
+            <div class="feature">
+                <h3>🔍 Smart Search</h3>
+                <p>Powered by Elasticsearch for lightning-fast email search and filtering.</p>
+            </div>
+            <div class="feature">
+                <h3>📱 Slack Integration</h3>
+                <p>Get notifications for important emails directly in your Slack workspace.</p>
+            </div>
+            <div class="feature">
+                <h3>💬 AI Replies</h3>
+                <p>Get intelligent reply suggestions powered by advanced language models.</p>
+            </div>
+            <div class="feature">
+                <h3>🔒 Secure & Private</h3>
+                <p>Your email data is encrypted and stored securely. We never access your emails.</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

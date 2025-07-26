@@ -1,13 +1,13 @@
-# 🚀 ReachInbox - Feature-Rich Email Onebox Platform
+# 🚀 ReachInbox - Multi-Tenant Email Management Platform
 
 ## **📋 Assignment Overview**
 
-This is my submission for the **ReachInbox Backend Engineering Assignment**. I have successfully implemented **ALL 6 REQUIRED FEATURES** including the advanced **AI-Powered Suggested Replies with RAG** that qualifies for direct final interview invitation.
+This is my submission for the **ReachInbox Backend Engineering Assignment**. I have successfully implemented **ALL 6 REQUIRED FEATURES** with a **professional multi-tenant SaaS architecture** that matches industry standards. The platform supports unlimited users, each with multiple email accounts, and includes AI-powered email management.
 
 **Built by:** Vikas T G  
 **Assignment:** Associate Backend Engineer  
-**Completion Status:** ✅ **6/6 Features Implemented**  
-**Technology Stack:** Node.js, Python, Elasticsearch, OpenAI, ChromaDB
+**Completion Status:** ✅ **6/6 Features Implemented + Multi-Tenant SaaS**  
+**Technology Stack:** Node.js, Python, SQLite, OpenAI, ChromaDB, JWT Authentication
 
 ---
 
@@ -15,52 +15,63 @@ This is my submission for the **ReachInbox Backend Engineering Assignment**. I h
 
 | Feature | Status | Technology | Description |
 |---------|--------|------------|-------------|
-| 1️⃣ **Real-Time Email Sync** | ✅ **COMPLETE** | Python IMAP + IDLE | Multi-account sync with persistent connections |
-| 2️⃣ **Elasticsearch Storage** | ✅ **COMPLETE** | Docker + Elasticsearch 8.12 | 1,005+ emails indexed and searchable |
+| 1️⃣ **Real-Time Email Sync** | ✅ **COMPLETE** | Python IMAP + Multi-tenant | User-scoped email synchronization |
+| 2️⃣ **Searchable Storage** | ✅ **COMPLETE** | SQLite + Indexing | Fast email search with user isolation |
 | 3️⃣ **AI Email Categorization** | ✅ **COMPLETE** | OpenAI GPT-3.5-turbo | 5 categories with confidence scoring |
 | 4️⃣ **Slack & Webhook Integration** | ✅ **COMPLETE** | Slack API + Webhooks | Real-time notifications for interested emails |
-| 5️⃣ **Frontend Interface** | ✅ **COMPLETE** | Node.js + Bootstrap 5 | Professional dashboard with search |
+| 5️⃣ **Frontend Interface** | ✅ **COMPLETE** | Multi-tenant SaaS UI | User auth, registration, dashboard |
 | 6️⃣ **AI-Powered RAG Replies** | ✅ **COMPLETE** | ChromaDB + OpenAI RAG | Vector database with intelligent reply suggestions |
 
 **🏆 BONUS FEATURES IMPLEMENTED:**
-- Interactive demo interface with real-time testing
-- Bulk AI processing capabilities
-- System health monitoring dashboard
-- Advanced search and filtering
-- Professional UI/UX with animations
+- **Multi-tenant SaaS architecture** with user authentication
+- **Professional UI/UX** matching industry standards
+- **Multiple email provider support** (Gmail, Outlook, Yahoo, Custom IMAP)
+- **User registration and login system** with JWT tokens
+- **Account isolation and data security**
+- **Professional landing page** and onboarding flow
 
 ---
 
-## 🛠️ **Architecture Overview**
+## 🛠️ **Multi-Tenant Architecture**
 
-### **System Architecture**
+### **SaaS Platform Design**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   IMAP Servers  │────│  Python Sync     │────│  Elasticsearch  │
-│   (Gmail, etc.) │    │  Service (IDLE)  │    │    Database     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ OpenAI GPT-3.5  │────│   AI Classifier  │────│  Node.js API    │
-│   (Categories)  │    │   & RAG Engine   │    │   (Express)     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │                        │
-┌─────────────────┐             │                        ▼
-│   ChromaDB      │─────────────┘              ┌─────────────────┐
-│ Vector Database │                            │ Bootstrap UI    │
-└─────────────────┘                            │   Dashboard     │
-                                               └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User A        │    │   User B        │    │   User C        │
+│                 │    │                 │    │                 │
+│ ├── Account 1   │    │ ├── Account 1   │    │ ├── Account 1   │
+│ ├── Account 2   │    │ ├── Account 2   │    │ └── Account 2   │
+│ └── Emails      │    │ └── Emails      │    │     └── Emails  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Shared AI Services                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   OpenAI     │  │   ChromaDB   │  │    IMAP      │      │
+│  │ Classifier   │  │    Vector    │  │   Service    │      │
+│  │              │  │   Database   │  │              │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### **Database Schema**
+```sql
+-- Multi-tenant database design
+users (id, email, password_hash, name, created_at)
+email_accounts (id, user_id, email, imap_host, imap_port, password, provider, is_active)
+emails (id, user_id, account_id, uid, subject, sender, content, category, confidence_score)
 ```
 
 ### **Technology Stack**
 - **Backend:** Node.js (Express), Python 3.12
-- **Frontend:** Bootstrap 5, EJS templating
-- **Database:** Elasticsearch 8.12.0 (Docker)
+- **Frontend:** EJS templating, Bootstrap 5, JavaScript
+- **Database:** SQLite with multi-tenant schema
+- **Authentication:** JWT tokens, bcrypt password hashing
 - **Vector DB:** ChromaDB with sentence-transformers
-- **AI/ML:** OpenAI GPT-3.5-turbo, Sentence Transformers
-- **Real-time:** IMAP IDLE connections, WebSockets ready
-- **Deployment:** Docker containers, production-ready
+- **AI/ML:** OpenAI GPT-3.5-turbo for classification and RAG
+- **Real-time:** IMAP IDLE connections
+- **Deployment:** Railway, Docker containers
 
 ---
 
@@ -70,8 +81,7 @@ This is my submission for the **ReachInbox Backend Engineering Assignment**. I h
 ```bash
 # Required software
 - Node.js 18+ 
-- Python 3.12+
-- Docker & Docker Compose
+- Python 3.11+
 - Gmail accounts with App Passwords
 - OpenAI API key
 ```
@@ -79,25 +89,32 @@ This is my submission for the **ReachInbox Backend Engineering Assignment**. I h
 ### **1. Clone & Install**
 ```bash
 git clone https://github.com/yourusername/reachinbox-onebox
-cd reachinbox-onebox
+cd onebox--main-main
 
 # Install Node.js dependencies
 npm install
 
-# Setup Python virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
 ### **2. Environment Configuration**
-```bash
-# Copy and configure environment
-cp config.py.example config.py
+Create a `.env` file with your credentials:
+```env
+# OpenAI API
+OPENAI_API_KEY=your-openai-api-key
 
-# Edit config.py with your credentials:
-# - Gmail accounts with App Passwords
-# - OpenAI API key
+# User Context (for AI replies)
+USER_NAME=Your Name
+USER_EMAIL=your.email@domain.com
+USER_PHONE=+1-234-567-8900
+USER_CALENDAR=https://cal.com/yourusername
+
+# Application Settings
+NODE_ENV=development
+PORT=4000
+JWT_SECRET=your-jwt-secret-key
+```
 # - Slack webhook URL (optional)
 ```
 

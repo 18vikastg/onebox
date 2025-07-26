@@ -1,6 +1,6 @@
 {
-  "name": "ReachInbox Email Management Platform",
-  "description": "Full-stack email management platform with AI-powered classification, real-time synchronization, and intelligent automation",
+  "name": "ReachInbox Email Management Platform with RAG",
+  "description": "Full-stack email management platform with AI-powered RAG reply suggestions, vector database, real-time synchronization, and intelligent automation",
   "repository": "https://github.com/your-username/reachinbox",
   "services": [
     {
@@ -15,13 +15,30 @@
       },
       "variables": {
         "NODE_ENV": "production",
-        "PORT": "4000"
+        "PORT": "4000",
+        "RAG_SERVICE_URL": "http://rag-service:5001"
       },
       "domains": [
         {
           "host": "reachinbox.railway.app"
         }
       ]
+    },
+    {
+      "name": "rag-service",
+      "source": {
+        "type": "image", 
+        "image": "python:3.11-slim"
+      },
+      "build": {
+        "buildCommand": "pip install -r requirements.txt",
+        "startCommand": "python rag_service_fastapi.py"
+      },
+      "variables": {
+        "PYTHONPATH": ".",
+        "PORT": "5001",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+      }
     },
     {
       "name": "email-sync",
@@ -31,10 +48,11 @@
       },
       "build": {
         "buildCommand": "pip install -r requirements.txt",
-        "startCommand": "python email_sync_service.py"
+        "startCommand": "python real_time_sync.py"
       },
       "variables": {
-        "PYTHONPATH": "."
+        "PYTHONPATH": ".",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
       }
     },
     {
@@ -87,8 +105,13 @@
       "default": "false"
     }
   },
-  "scripts": {
-    "build": "npm install && pip install -r requirements.txt",
-    "start": "npm start"
+  "environments": {
+    "production": {
+      "name": "Production",
+      "variables": {
+        "NODE_ENV": "production",
+        "RAG_ENABLED": "true"
+      }
+    }
   }
 }

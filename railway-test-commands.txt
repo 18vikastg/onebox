@@ -1,0 +1,21 @@
+# Quick Railway Test Commands
+
+# After deployment, test these endpoints:
+
+# 1. Health check
+curl https://your-app.railway.app/health
+
+# 2. RAG service health  
+curl https://your-app.railway.app:5001/health
+
+# 3. Test RAG API
+curl -X POST https://your-app.railway.app/api/suggest-reply \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "emailContent": "Hi, I need help with integration",
+    "sender": "client@example.com"
+  }'
+
+# 4. Monitor logs
+railway logs --service rag-service
+railway logs --service web

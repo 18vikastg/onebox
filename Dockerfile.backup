@@ -1,0 +1,31 @@
+FROM node:18-alpine
+
+# Install Python and pip
+RUN apk add --no-cache python3 py3-pip
+
+# Create symlink for python command  
+RUN ln -sf python3 /usr/bin/python
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm install
+
+# Copy Python requirements
+COPY requirements.txt ./
+
+# Install Python dependencies (simplified)
+RUN pip3 install --no-cache-dir openai==0.28.1 chromadb==0.4.22 sentence-transformers==2.2.2 fastapi==0.104.1 uvicorn==0.24.0
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 4000
+
+# Start the application
+CMD ["npm", "start"]

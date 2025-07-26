@@ -9,9 +9,16 @@
     "dev": "npm run sync & npm start"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "csv-parse": "^6.1.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "node-fetch": "^2.7.0"
+    "express-session": "^1.18.2",
+    "imap": "^0.8.19",
+    "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.6.5",
+    "node-fetch": "^2.7.0",
+    "sqlite3": "^5.1.7"
   }
 }
