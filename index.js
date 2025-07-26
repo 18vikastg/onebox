@@ -915,6 +915,43 @@ app.get('/api/rag-stats', authenticateToken, async (req, res) => {
     }
 });
 
+// Public test endpoint for email sync (no auth required for testing)
+app.post('/api/test-sync', async (req, res) => {
+    try {
+        console.log("🧪 Test sync endpoint triggered")
+        
+        // Get or create default user
+        let user = await database.getUserByEmail('test@example.com')
+        if (!user) {
+            user = await database.addUser('test@example.com', 'test123')
+            console.log("👤 Created test user:", user.id)
+        }
+        
+        // Try to sync emails for the test user
+        const result = await syncEmailsFromAccount({
+            email: process.env.GMAIL_PRIMARY_EMAIL,
+            password: process.env.GMAIL_PRIMARY_PASSWORD,
+            userId: user.id
+        })
+        
+        console.log("📧 Test sync result:", result)
+        
+        res.json({
+            success: true,
+            message: "Test sync completed",
+            result: result,
+            userId: user.id
+        })
+        
+    } catch (error) {
+        console.error("❌ Test sync error:", error)
+        res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 app.listen(4000, () => {
     console.log("App is listening on port 4000")
     console.log("🚀 Email sync and RAG services initialized")
