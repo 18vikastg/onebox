@@ -1188,16 +1188,36 @@
         }
         
         function updateStatsBadges(stats) {
-            if (!stats || !Array.isArray(stats)) {
+            if (!stats || typeof stats !== 'object') {
                 console.log('⚠️ Invalid stats data:', stats);
                 return;
             }
             
-            const totalEmails = stats.reduce((sum, account) => sum + account.count, 0);
+            // Update total emails badge
             const totalBadge = document.querySelector('.badge.bg-primary');
             if (totalBadge && totalBadge.textContent.includes('Total Emails')) {
-                totalBadge.textContent = `${totalEmails} Total Emails`;
+                totalBadge.textContent = `${stats.totalEmails || 0} Total Emails`;
             }
+            
+            // Update category statistics if they exist
+            if (stats.categories) {
+                Object.keys(stats.categories).forEach(category => {
+                    const count = stats.categories[category];
+                    // Try to find category cards and update them
+                    const categoryCards = document.querySelectorAll('.card .card-body');
+                    categoryCards.forEach(card => {
+                        const categoryText = card.querySelector('small.text-muted');
+                        if (categoryText && categoryText.textContent.trim() === category) {
+                            const countElement = card.querySelector('.fw-bold');
+                            if (countElement) {
+                                countElement.textContent = count;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            console.log('✅ Stats updated successfully:', stats);
         }
         
         // Initialize when page loads
