@@ -5,57 +5,78 @@ const path = require('path');
 class Database {
     constructor() {
         this.db = new sqlite3.Database(path.join(__dirname, 'reachinbox.db'));
+        this.tablesInitialized = false;
         this.initTables();
     }
 
     initTables() {
-        // Users table
-        this.db.run(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                name TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+        return new Promise((resolve, reject) => {
+            // Users table
+            this.db.run(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `, (err) => {
+                if (err) {
+                    console.error('Error creating users table:', err);
+                    return reject(err);
+                }
 
-        // Email accounts table
-        this.db.run(`
-            CREATE TABLE IF NOT EXISTS email_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                email TEXT NOT NULL,
-                imap_host TEXT NOT NULL,
-                imap_port INTEGER DEFAULT 993,
-                password TEXT NOT NULL,
-                provider TEXT DEFAULT 'gmail',
-                is_active BOOLEAN DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        `);
+                // Email accounts table
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS email_accounts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        email TEXT NOT NULL,
+                        imap_host TEXT NOT NULL,
+                        imap_port INTEGER DEFAULT 993,
+                        password TEXT NOT NULL,
+                        provider TEXT DEFAULT 'gmail',
+                        is_active BOOLEAN DEFAULT 1,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (id)
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating email_accounts table:', err);
+                        return reject(err);
+                    }
 
-        // Emails table
-        this.db.run(`
-            CREATE TABLE IF NOT EXISTS emails (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                account_id INTEGER NOT NULL,
-                uid TEXT NOT NULL,
-                subject TEXT,
-                sender TEXT,
-                content TEXT,
-                category TEXT,
-                confidence_score REAL,
-                date_received DATETIME,
-                date_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                FOREIGN KEY (account_id) REFERENCES email_accounts (id)
-            )
-        `);
+                    // Emails table
+                    this.db.run(`
+                        CREATE TABLE IF NOT EXISTS emails (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL,
+                            account_id INTEGER NOT NULL,
+                            uid TEXT NOT NULL,
+                            subject TEXT,
+                            sender TEXT,
+                            content TEXT,
+                            category TEXT,
+                            confidence_score REAL,
+                            date_received DATETIME,
+                            date_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            is_read BOOLEAN DEFAULT 0,
+                            FOREIGN KEY (user_id) REFERENCES users (id),
+                            FOREIGN KEY (account_id) REFERENCES email_accounts (id)
+                        )
+                    `, (err) => {
+                        if (err) {
+                            console.error('Error creating emails table:', err);
+                            return reject(err);
+                        }
 
-        console.log('Database tables initialized');
+                        console.log('Database tables initialized');
+                        this.tablesInitialized = true;
+                        resolve();
+                    });
+                });
+            });
+        });
     }
 
     // User methods

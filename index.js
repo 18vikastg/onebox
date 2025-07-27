@@ -227,6 +227,20 @@ async function initializeEmailSync() {
     console.log("🚀 Initializing production email sync system...")
     
     try {
+        // Wait for database tables to be ready
+        console.log("⏳ Waiting for database tables to initialize...")
+        await new Promise((resolve) => {
+            const checkTables = () => {
+                if (database.tablesInitialized) {
+                    resolve();
+                } else {
+                    setTimeout(checkTables, 1000);
+                }
+            };
+            checkTables();
+        });
+        console.log("✅ Database tables ready!")
+        
         // Start the background sync service
         startEmailSyncService()
         
@@ -1220,7 +1234,7 @@ async function initializeEmailSync() {
         // Get or create your user account
         let user = await database.getUserByEmail(process.env.USER_EMAIL || 'vikastg2000@gmail.com')
         if (!user) {
-            user = await database.addUser(process.env.USER_EMAIL || 'vikastg2000@gmail.com', 'vikas123')
+            user = await database.createUser(process.env.USER_EMAIL || 'vikastg2000@gmail.com', 'vikas123', 'Vikas T G')
             console.log("👤 Created user account:", user.id)
         }
         
