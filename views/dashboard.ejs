@@ -1161,6 +1161,68 @@
             if (elements.searchForm) elements.searchForm.submit();
         }
         
+        // Filter emails by category
+        function filterEmailsByCategory(selectedCategory) {
+            const tableRows = document.querySelectorAll('#tableView tbody tr');
+            const cardItems = document.querySelectorAll('#cardsView .email-card');
+            
+            if (selectedCategory === 'all') {
+                // Show all emails
+                tableRows.forEach(row => row.style.display = '');
+                cardItems.forEach(card => card.style.display = '');
+            } else {
+                // Filter by category
+                tableRows.forEach(row => {
+                    const categoryBadge = row.querySelector('.badge');
+                    if (categoryBadge) {
+                        const categoryText = categoryBadge.textContent.trim();
+                        const matches = categoryText.toLowerCase().includes(selectedCategory.toLowerCase());
+                        row.style.display = matches ? '' : 'none';
+                    }
+                });
+                
+                cardItems.forEach(card => {
+                    const categoryBadge = card.querySelector('.badge');
+                    if (categoryBadge) {
+                        const categoryText = categoryBadge.textContent.trim();
+                        const matches = categoryText.toLowerCase().includes(selectedCategory.toLowerCase());
+                        card.style.display = matches ? '' : 'none';
+                    }
+                });
+            }
+        }
+        
+        // Filter emails by account
+        function filterEmailsByAccount(selectedAccount) {
+            const tableRows = document.querySelectorAll('#tableView tbody tr');
+            const cardItems = document.querySelectorAll('#cardsView .email-card');
+            
+            if (selectedAccount === 'all') {
+                // Show all emails
+                tableRows.forEach(row => row.style.display = '');
+                cardItems.forEach(card => card.style.display = '');
+            } else {
+                // Filter by account
+                tableRows.forEach(row => {
+                    const emailIndex = row.getAttribute('data-index');
+                    if (emailIndex && emailsData[emailIndex]) {
+                        const email = emailsData[emailIndex];
+                        const matches = email.account_email === selectedAccount;
+                        row.style.display = matches ? '' : 'none';
+                    }
+                });
+                
+                cardItems.forEach(card => {
+                    const emailIndex = card.getAttribute('data-index');
+                    if (emailIndex && emailsData[emailIndex]) {
+                        const email = emailsData[emailIndex];
+                        const matches = email.account_email === selectedAccount;
+                        card.style.display = matches ? '' : 'none';
+                    }
+                });
+            }
+        }
+        
         // Auto-refresh functionality
         let autoRefreshInterval;
         
@@ -1236,7 +1298,23 @@
                 });
             }
             
-            console.log('🚀 Enhanced email dashboard initialized with instant search!');
+            // Set up category filter
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', function() {
+                    filterEmailsByCategory(this.value);
+                });
+            }
+            
+            // Set up account filter
+            const accountFilter = document.getElementById('accountFilter');
+            if (accountFilter) {
+                accountFilter.addEventListener('change', function() {
+                    filterEmailsByAccount(this.value);
+                });
+            }
+            
+            console.log('🚀 Enhanced email dashboard initialized with instant search and filters!');
         });
         
         // Global variable to store current email for reply suggestions
@@ -1785,7 +1863,7 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            emailContent: email.body || email.content_preview || '',
+                            emailContent: email.body || email.content_preview || email.content || '',
                             sender: email.sender || '',
                             subject: email.subject || ''
                         })

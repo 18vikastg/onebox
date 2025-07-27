@@ -851,8 +851,15 @@ app.get('/setup', requireAuth, async (req, res) => {
 // AI Reply Suggestion Endpoint
 app.post('/api/suggest-reply', authenticateToken, async (req, res) => {
     try {
-        console.log('🤖 AI Reply Request received from user:', req.user.email);
+        const requestId = Math.random().toString(36).substring(7);
+        console.log(`🤖 AI Reply Request [${requestId}] received from user: ${req.user.email}`);
         const { emailContent, sender, subject, context } = req.body;
+        
+        // Debug logging to see what we're actually getting
+        console.log(`📧 DEBUG [${requestId}]: Email content length:`, emailContent ? emailContent.length : 0);
+        console.log(`📧 DEBUG [${requestId}]: Sender:`, sender);
+        console.log(`📧 DEBUG [${requestId}]: Subject:`, subject);
+        console.log(`📧 DEBUG [${requestId}]: First 200 chars of content:`, emailContent ? emailContent.substring(0, 200) : 'No content');
         
         if (!emailContent || !sender) {
             return res.status(400).json({
@@ -863,7 +870,7 @@ app.post('/api/suggest-reply', authenticateToken, async (req, res) => {
 
         // Try to generate reply using OpenAI API first
         try {
-            const suggestion = await generateReplyWithAI(emailContent, sender, subject, context);
+            const suggestion = await generateReplyWithAI(emailContent, sender, subject, context, requestId);
             
             return res.json({
                 success: true,
@@ -918,114 +925,475 @@ Vikas T G`,
     }
 });
 
-// OpenAI integration function
-async function generateReplyWithAI(emailContent, sender, subject, context) {
+// Helper function to extract clean text from HTML email content
+function extractTextFromHTML(htmlContent) {
+    if (!htmlContent) return '';
+    
+    // Remove HTML tags and decode entities
+    let text = htmlContent
+        .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove scripts
+        .replace(/<style[^>]*>.*?<\/style>/gi, '') // Remove styles
+        .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+        .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
+        .replace(/&amp;/g, '&') // Decode ampersands
+        .replace(/&lt;/g, '<') // Decode less than
+        .replace(/&gt;/g, '>') // Decode greater than
+        .replace(/&quot;/g, '"') // Decode quotes
+        .replace(/&#39;/g, "'") // Decode apostrophes
+        .replace(/\s+/g, ' ') // Collapse multiple spaces
+        .trim();
+    
+    // Limit to reasonable length for AI analysis (first 2000 characters)
+    if (text.length > 2000) {
+        text = text.substring(0, 2000) + '...';
+    }
+    
+    return text;
+}
+
+// OpenAI integration function with enhanced RAG
+async function generateReplyWithAI(emailContent, sender, subject, context, requestId = 'unknown') {
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
         throw new Error('OpenAI API key not configured');
     }
 
-    const prompt = `You are an AI assistant helping to write professional email replies. 
+    // Clean and extract meaningful text from HTML email content
+    const cleanContent = extractTextFromHTML(emailContent);
+    
+    console.log(`📧 DEBUG [${requestId}]: Original content length: ${emailContent.length}`);
+    console.log(`📧 DEBUG [${requestId}]: Clean content length: ${cleanContent.length}`);
+    console.log(`📧 DEBUG [${requestId}]: Clean content preview: ${cleanContent.substring(0, 300)}...`);
 
-CONTEXT:
-- You are Vikas T G, a Full Stack Developer and AI Engineer
-- Your email: vikastg.dev@gmail.com
-- Your portfolio: https://vikastg.vercel.app
-- Your calendar link: https://cal.com/vikastg
-- You are professional, friendly, and prompt in responses
+    try {
+        // Step 1: Retrieve relevant training examples from RAG database
+        const relevantExamples = retrieveRelevantExamples(cleanContent, subject);
+        
+        // Step 2: Generate reply using RAG approach
+        const ragPrompt = buildRAGPrompt(cleanContent, subject, sender, relevantExamples);
+        
+        console.log(`🧠 RAG [${requestId}]: Using ${relevantExamples.length} relevant examples for context`);
+        if (relevantExamples.length > 0) {
+            console.log(`📚 RAG [${requestId}]: Found examples:`, relevantExamples.map(ex => `${ex.type}-${ex.scenario}`));
+        }
+
+        const replyResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-3.5-turbo',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are Vikas T G, a Full Stack Developer. Generate professional email replies based on the provided examples and context. Follow the examples closely while adapting to the specific email content.'
+                    },
+                    {
+                        role: 'user',
+                        content: ragPrompt
+                    }
+                ],
+                max_tokens: 400,
+                temperature: 0.7
+            })
+        });
+
+        const replyData = await replyResponse.json();
+        
+        // Check if the reply API response has the expected structure
+        if (!replyData.choices || !replyData.choices[0] || !replyData.choices[0].message) {
+            console.error('❌ Invalid OpenAI reply response structure:', replyData);
+            throw new Error('Invalid OpenAI API response structure for reply');
+        }
+        
+        return replyData.choices[0].message.content.trim();
+
+    } catch (error) {
+        console.error('AI analysis error:', error);
+        throw error;
+    }
+}
+
+// RAG Training Examples Database
+const ragTrainingExamples = [
+    // INTERVIEW SPECIFIC EXAMPLES - High Priority
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_invitation',
+        input: 'Your resume has been shortlisted. When will be a good time for you to attend the technical interview?',
+        output: 'Thank you for shortlisting my profile! I\'m available for a technical interview. You can book a slot here: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_invitation',
+        input: 'Hi, Your resume has been shortlisted. When will be a good time for you to attend the technical interview?',
+        output: 'Thank you for shortlisting my profile! I\'m available for a technical interview. You can book a slot here: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_scheduling',
+        input: 'Congratulations! Your profile has been selected for the next round. Please let us know your availability.',
+        output: 'Thank you for selecting my profile! I\'m excited about the opportunity. Please book a convenient time slot: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'technical_interview',
+        input: 'We would like to schedule a technical interview with you. What time suits you?',
+        output: 'I\'m available for the technical interview! Please book a slot that works for you: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'final_interview',
+        input: 'Congratulations! You have cleared our technical rounds. When can you join us for the final interview?',
+        output: 'Thank you! I\'m excited about this opportunity. I\'m available for the final interview. Please book a convenient slot: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_invitation',
+        input: 'Your application has been reviewed and we\'d like to interview you. Are you available this week?',
+        output: 'Thank you for reviewing my application! I\'m available for an interview this week. You can book a time slot here: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_invitation',
+        input: 'We are impressed with your profile. Can we schedule a call to discuss the position?',
+        output: 'Thank you! I\'m excited to discuss the position. Please book a call at your convenience: https://cal.com/vikastg'
+    },
+    
+    // Job Opportunity Examples
+    {
+        type: 'JOB_OPPORTUNITY', 
+        scenario: 'job_posting',
+        input: 'We have an opening for Full Stack Developer. Are you interested?',
+        output: 'Thank you for reaching out! I\'m very interested in the Full Stack Developer position. I have experience with React, Node.js, and Python. Could you share more details about the role? My portfolio: https://vikastg.vercel.app'
+    },
+    {
+        type: 'JOB_OPPORTUNITY',
+        scenario: 'hr_outreach',
+        input: 'Hi, I found your profile interesting. We have openings for developers. Can we schedule a call?',
+        output: 'Thank you for reaching out! I\'m interested in learning more about the developer opportunities. Please book a convenient time: https://cal.com/vikastg'
+    },
+    {
+        type: 'JOB_OPPORTUNITY',
+        scenario: 'recruiter_contact',
+        input: 'Are you open to new opportunities? We have a great position that matches your skills.',
+        output: 'Yes, I\'m open to discussing new opportunities! I\'d love to learn more about the position. You can schedule a call here: https://cal.com/vikastg'
+    },
+    
+    // Project Collaboration Examples
+    {
+        type: 'PROJECT_COLLABORATION',
+        scenario: 'freelance_project',
+        input: 'We need a full-stack developer for our e-commerce project. Are you available?',
+        output: 'Thank you for considering me! I\'d love to work on your e-commerce project. I have extensive experience with full-stack development. Let\'s discuss the requirements: https://cal.com/vikastg'
+    },
+    {
+        type: 'PROJECT_COLLABORATION',
+        scenario: 'collaboration_invite',
+        input: 'Would you like to collaborate on an AI project with our team?',
+        output: 'I\'m very interested in collaborating on AI projects! I have experience with machine learning and AI development. Let\'s connect to discuss: https://cal.com/vikastg'
+    },
+    
+    // Networking Examples
+    {
+        type: 'NETWORKING',
+        scenario: 'linkedin_connection',
+        input: 'I\'d like to connect with you on LinkedIn and explore potential opportunities.',
+        output: 'Thank you for reaching out! I\'d be happy to connect and explore opportunities. You can also schedule a call with me: https://cal.com/vikastg'
+    },
+    {
+        type: 'NETWORKING',
+        scenario: 'meetup_invitation',
+        input: 'We\'re organizing a tech meetup. Would you like to join us?',
+        output: 'Thank you for the invitation! I\'d love to join the tech meetup. Please share the details and I\'ll confirm my attendance.'
+    },
+    
+    // Technical Discussion Examples
+    {
+        type: 'TECHNICAL_DISCUSSION',
+        scenario: 'code_review',
+        input: 'Could you review our React component architecture?',
+        output: 'I\'d be happy to review your React architecture! I have extensive experience with React best practices. Let\'s schedule a session: https://cal.com/vikastg'
+    },
+    {
+        type: 'TECHNICAL_DISCUSSION',
+        scenario: 'tech_consultation',
+        input: 'We need consultation on our tech stack choices. Can you help?',
+        output: 'Absolutely! I\'d love to help with your tech stack decisions. I have experience with various technologies. Let\'s discuss your requirements: https://cal.com/vikastg'
+    },
+    
+    // Business Inquiry Examples
+    {
+        type: 'BUSINESS_INQUIRY',
+        scenario: 'consulting_request',
+        input: 'We need a technical consultant for our startup. Are you available?',
+        output: 'Thank you for considering me! I\'d be interested in consulting for your startup. Let\'s discuss your technical needs: https://cal.com/vikastg'
+    },
+    
+    // Additional Interview Examples for Better Coverage
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'interview_invitation',
+        input: 'Can you come for an interview next week? What time works for you?',
+        output: 'I\'m available for an interview next week! Please book a slot that works for both of us: https://cal.com/vikastg'
+    },
+    {
+        type: 'INTERVIEW_INVITATION',
+        scenario: 'phone_screening',
+        input: 'We\'d like to have a phone screening call with you. When are you free?',
+        output: 'I\'m available for a phone screening call! Please book a convenient time: https://cal.com/vikastg'
+    },
+    
+    // More project examples
+    {
+        type: 'PROJECT_COLLABORATION',
+        scenario: 'startup_opportunity',
+        input: 'We\'re a startup looking for a technical co-founder. Interested?',
+        output: 'Thank you for considering me! I\'m interested in learning more about the startup and the technical co-founder role. Let\'s discuss: https://cal.com/vikastg'
+    },
+    {
+        type: 'PROJECT_COLLABORATION',
+        scenario: 'contract_work',
+        input: 'We need someone to build a web application for us. Can you help?',
+        output: 'I\'d be happy to help build your web application! I have extensive experience in full-stack development. Let\'s discuss your requirements: https://cal.com/vikastg'
+    }
+];
+
+// Retrieve relevant examples from RAG database
+function retrieveRelevantExamples(emailContent, subject) {
+    const normalizedContent = emailContent.toLowerCase();
+    const normalizedSubject = (subject || '').toLowerCase();
+    const combinedText = `${normalizedSubject} ${normalizedContent}`;
+    
+    console.log('🔍 RAG Analysis - Subject:', subject);
+    console.log('🔍 RAG Analysis - Content snippet:', emailContent.substring(0, 100));
+    
+    // Score each example based on relevance
+    const scoredExamples = ragTrainingExamples.map(example => {
+        let score = 0;
+        const exampleInput = example.input.toLowerCase();
+        const exampleScenario = example.scenario.toLowerCase();
+        
+        // Enhanced keyword matching with better patterns
+        const keyPatterns = [
+            // Interview patterns
+            { pattern: /(interview|shortlist|select|technical|round|schedule|time)/g, boost: 10, type: 'INTERVIEW' },
+            { pattern: /(job|position|role|opportunity|hiring|career|apply|opening|developer|engineer)/g, boost: 8, type: 'JOB' },
+            { pattern: /(project|collaboration|work|team|development)/g, boost: 6, type: 'PROJECT' },
+            { pattern: /(connect|network|meet|discuss|chat)/g, boost: 5, type: 'NETWORKING' },
+            { pattern: /(technical|review|code|assessment|test)/g, boost: 7, type: 'TECHNICAL' },
+            { pattern: /(calendar|book|slot|available|time|meeting)/g, boost: 8, type: 'SCHEDULING' }
+        ];
+        
+        // Check patterns in both email content and examples
+        keyPatterns.forEach(pattern => {
+            const emailMatches = (combinedText.match(pattern.pattern) || []).length;
+            const exampleMatches = (exampleInput.match(pattern.pattern) || []).length;
+            
+            if (emailMatches > 0 && exampleMatches > 0) {
+                score += pattern.boost * Math.min(emailMatches, 3); // Cap to avoid over-scoring
+            }
+        });
+        
+        // Specific scenario matching with higher weights
+        const scenarioMatches = [
+            { keywords: ['shortlist', 'interview', 'schedule'], scenario: 'interview_invitation', boost: 15 },
+            { keywords: ['technical', 'interview', 'time'], scenario: 'technical_interview', boost: 15 },
+            { keywords: ['job', 'opportunity', 'apply'], scenario: 'job_opportunity', boost: 12 },
+            { keywords: ['project', 'collaboration', 'work'], scenario: 'project_collaboration', boost: 10 },
+            { keywords: ['connect', 'network', 'meet'], scenario: 'networking', boost: 8 },
+            { keywords: ['review', 'feedback', 'technical'], scenario: 'technical_discussion', boost: 10 }
+        ];
+        
+        scenarioMatches.forEach(match => {
+            const emailHasKeywords = match.keywords.some(keyword => combinedText.includes(keyword));
+            const exampleHasScenario = exampleScenario.includes(match.scenario) || 
+                                      match.keywords.some(keyword => exampleInput.includes(keyword));
+            
+            if (emailHasKeywords && exampleHasScenario) {
+                score += match.boost;
+            }
+        });
+        
+        // Direct type matching
+        if (example.type === 'INTERVIEW_INVITATION' && 
+            (combinedText.includes('interview') || combinedText.includes('shortlist'))) {
+            score += 20;
+        }
+        
+        if (example.type === 'JOB_OPPORTUNITY' && 
+            (combinedText.includes('job') || combinedText.includes('opening') || 
+             combinedText.includes('position') || combinedText.includes('developer'))) {
+            score += 15;
+        }
+        
+        console.log(`📊 Example "${example.scenario}" scored: ${score}`);
+        return { ...example, score };
+    });
+    
+    // Return top 2 most relevant examples (reduced for better focus)
+    const topExamples = scoredExamples
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2)
+        .filter(example => example.score > 0);
+    
+    console.log('🎯 Selected examples:', topExamples.map(ex => `${ex.scenario} (${ex.score})`));
+    return topExamples;
+}
+
+// Build RAG prompt with retrieved examples
+function buildRAGPrompt(emailContent, subject, sender, relevantExamples) {
+    console.log('🎯 Building RAG prompt with examples:', relevantExamples.length);
+    
+    let prompt = `You are Vikas T G, a Full Stack Developer. Generate a professional email reply based on the training examples provided.
+
+PERSONAL DETAILS:
+- Name: Vikas T G
+- Role: Full Stack Developer & AI Engineer  
+- Email: vikastg2000@gmail.com
+- Phone: +91-8792283829
+- Calendar Booking: https://cal.com/vikastg
+- Portfolio: https://vikastg.vercel.app
+- Location: India
+- Status: Available for opportunities
 
 EMAIL TO REPLY TO:
 From: ${sender}
-Subject: ${subject || 'No Subject'}
+Subject: ${subject}
 Content: ${emailContent}
 
-INSTRUCTIONS:
-1. Write a professional, contextually appropriate reply
-2. If it's about job opportunities/interviews, mention your availability and calendar link
-3. If it's about projects/collaboration, show enthusiasm and mention scheduling a discussion
-4. Keep the tone professional but friendly
-5. Always sign off as "Best regards, Vikas T G"
-6. Be concise but complete
+`;
 
-Generate only the email reply content:`;
+    if (relevantExamples.length > 0) {
+        prompt += `TRAINING EXAMPLES TO FOLLOW:\n`;
+        relevantExamples.forEach((example, index) => {
+            prompt += `
+Example ${index + 1} - ${example.scenario.toUpperCase()}:
+When someone says: "${example.input}"
+You should reply: "${example.output}"
+`;
+        });
+        
+        prompt += `\nIMPORTANT INSTRUCTIONS:
+1. Follow the pattern from the examples above
+2. If the email is about interviews/shortlisting, ALWAYS include the calendar link: https://cal.com/vikastg
+3. Keep the reply professional but friendly
+4. Address the specific content of the received email
+5. Match the tone and structure of the example replies
+6. For interview invitations, express enthusiasm and provide the booking link
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are a professional email assistant. Write concise, professional email replies.'
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
-            max_tokens: 300,
-            temperature: 0.7
-        })
-    });
+Generate a reply that follows the examples:`;
+    } else {
+        // Fallback when no examples match
+        prompt += `No specific training examples matched. Generate a professional reply that:
+1. Addresses the email content appropriately  
+2. If it's about jobs/interviews, include calendar link: https://cal.com/vikastg
+3. If it's about projects, mention portfolio: https://vikastg.vercel.app
+4. Be professional and helpful
 
-    if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+Generate a professional reply:`;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
+    
+    return prompt;
 }
 
-// Template fallback function
+// Enhanced template fallback function  
 function generateTemplateFallback(emailContent, sender) {
     const lowerContent = emailContent.toLowerCase();
+    const lowerSender = sender.toLowerCase();
     
-    if (lowerContent.includes('interview') || lowerContent.includes('shortlisted') || lowerContent.includes('technical')) {
-        return `Thank you for shortlisting my profile! I'm excited about this opportunity and available for a technical interview.
+    console.log(`🔄 Generating template fallback for: ${sender} - ${emailContent.substring(0, 100)}...`);
+    
+    // Job/Interview related
+    if (lowerContent.includes('interview') || lowerContent.includes('shortlisted') || 
+        lowerContent.includes('technical') || lowerContent.includes('position') ||
+        lowerContent.includes('role') || lowerContent.includes('hiring')) {
+        return `Thank you for considering my profile for this position! I'm very interested in this opportunity.
 
-I can accommodate your schedule - please feel free to book a convenient time slot here: https://cal.com/vikastg
+I'm available for an interview at your convenience. Please feel free to schedule a time that works best for you: https://cal.com/vikastg
 
-Looking forward to discussing my qualifications further.
+I look forward to discussing how my skills can contribute to your team.
 
 Best regards,
-Vikas T G`;
+Vikas T G
+Full Stack Developer & AI Engineer
+Portfolio: https://vikastg.vercel.app`;
     }
     
-    if (lowerContent.includes('meeting') || lowerContent.includes('discuss') || lowerContent.includes('project')) {
-        return `Thank you for reaching out! I would be happy to discuss the project requirements with you.
+    // Project/Collaboration related
+    if (lowerContent.includes('project') || lowerContent.includes('collaboration') || 
+        lowerContent.includes('development') || lowerContent.includes('freelance') ||
+        lowerContent.includes('work together') || lowerContent.includes('build')) {
+        return `Thank you for reaching out about this project! I'm excited about the opportunity to collaborate with you.
 
-I'm available for a meeting and can accommodate your schedule. You can book a convenient time slot here: https://cal.com/vikastg
+I'd love to discuss the project requirements, timeline, and technical specifications in detail. Please feel free to schedule a call: https://cal.com/vikastg
 
-Looking forward to our discussion!
+Looking forward to working together on this exciting project!
 
 Best regards,
-Vikas T G`;
+Vikas T G
+Full Stack Developer & AI Engineer
+Portfolio: https://vikastg.vercel.app`;
     }
     
-    if (lowerContent.includes('opportunity') || lowerContent.includes('role') || lowerContent.includes('position')) {
-        return `Thank you for considering me for this opportunity! I'm very interested in learning more about the role.
+    // Technical discussion/help
+    if (lowerContent.includes('technical') || lowerContent.includes('code') || 
+        lowerContent.includes('help') || lowerContent.includes('question') ||
+        lowerContent.includes('issue') || lowerContent.includes('bug')) {
+        return `Thank you for reaching out! I'd be happy to help with your technical question.
 
-I'm available to discuss how my skills can contribute to your team. Please feel free to schedule a call here: https://cal.com/vikastg
+Based on your message, I can provide insights and assistance. Would you like to schedule a quick call to discuss this in detail? https://cal.com/vikastg
 
-Looking forward to connecting with you!
+Feel free to share more context, and I'll do my best to help you find a solution.
 
 Best regards,
-Vikas T G`;
+Vikas T G
+Full Stack Developer & AI Engineer`;
     }
     
-    // Default professional response
-    return `Thank you for your email. I appreciate you reaching out.
+    // LinkedIn/Networking
+    if (lowerSender.includes('linkedin') || lowerContent.includes('connection') || 
+        lowerContent.includes('network') || lowerContent.includes('connect')) {
+        return `Thank you for connecting! I appreciate you reaching out.
 
-I'm available to discuss this further at your convenience. You can schedule a meeting here: https://cal.com/vikastg
+I'm always interested in connecting with fellow professionals in the tech industry. I'd love to learn more about your work and explore potential collaboration opportunities.
+
+Feel free to reach out anytime if you'd like to discuss projects or just chat about technology!
+
+Best regards,
+Vikas T G
+Full Stack Developer & AI Engineer
+Portfolio: https://vikastg.vercel.app`;
+    }
+    
+    // Business inquiry
+    if (lowerContent.includes('business') || lowerContent.includes('service') || 
+        lowerContent.includes('proposal') || lowerContent.includes('quotation')) {
+        return `Thank you for your business inquiry! I appreciate you considering my services.
+
+I'd be happy to discuss your requirements in detail and provide you with a tailored solution. Let's schedule a consultation call: https://cal.com/vikastg
+
+Looking forward to understanding your needs and how I can help your business succeed.
+
+Best regards,
+Vikas T G
+Full Stack Developer & AI Engineer
+Portfolio: https://vikastg.vercel.app`;
+    }
+    
+    // Default personalized response
+    return `Thank you for reaching out! I appreciate your message.
+
+I'd be happy to discuss this further with you. Please feel free to schedule a convenient time for us to connect: https://cal.com/vikastg
 
 Looking forward to hearing from you!
 
 Best regards,
-Vikas T G`;
+Vikas T G
+Full Stack Developer & AI Engineer
+Portfolio: https://vikastg.vercel.app`;
 }
 
 // RAG stats endpoint
