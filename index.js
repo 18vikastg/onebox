@@ -11,6 +11,9 @@ const { simpleParser } = require('mailparser')
 
 let app = express()
 
+// Serve static files
+app.use(express.static(__dirname))
+
 app.set('view engine', 'ejs')
 
 app.use(express.json())
@@ -196,23 +199,64 @@ function startEmailSyncService() {
     console.log("🚀 Starting real-time email sync service")
     emailSyncStarted = true
     
-    // Sync emails every 5 minutes for all users
+    // Read sync interval from environment or default to 2 minutes for real-time feel
+    const syncIntervalMinutes = parseInt(process.env.SYNC_INTERVAL_MINUTES) || 2
+    console.log(`⏰ Email sync will run every ${syncIntervalMinutes} minutes`)
+    
+    // Sync emails for all users at specified interval
     setInterval(async () => {
         try {
+            console.log("🔄 Running scheduled email sync...")
             const users = await database.getAllUsers()
+            
             for (const user of users) {
                 await syncEmailsForUser(user.id)
             }
+            
+            console.log(`✅ Scheduled sync completed for ${users.length} users`)
         } catch (error) {
-            console.error('Email sync interval error:', error)
+            console.error('❌ Email sync interval error:', error.message)
         }
-    }, 5 * 60 * 1000) // 5 minutes
+    }, syncIntervalMinutes * 60 * 1000)
     
     console.log("🚀 Real-time email sync service initialized")
 }
 
 // Start the email sync service when server starts
-setTimeout(startEmailSyncService, 5000) // Wait 5 seconds for server to fully start
+async function initializeEmailSync() {
+    console.log("🚀 Initializing production email sync system...")
+    
+    try {
+        // Start the background sync service
+        startEmailSyncService()
+        
+        // Auto-sync for any existing users with accounts
+        const users = await database.getAllUsers()
+        console.log(`👥 Found ${users.length} existing users`)
+        
+        for (const user of users) {
+            const accounts = await database.getUserEmailAccounts(user.id)
+            if (accounts.length > 0) {
+                console.log(`📧 User ${user.id} has ${accounts.length} accounts, starting sync...`)
+                setTimeout(async () => {
+                    try {
+                        await syncEmailsForUser(user.id)
+                        console.log(`✅ Initial sync completed for user ${user.id}`)
+                    } catch (error) {
+                        console.error(`❌ Initial sync failed for user ${user.id}:`, error.message)
+                    }
+                }, Math.random() * 10000) // Stagger syncs with random delay
+            }
+        }
+        
+        console.log("🚀 Email sync system initialized successfully!")
+        
+    } catch (error) {
+        console.error('❌ Failed to initialize email sync:', error)
+    }
+}
+
+setTimeout(initializeEmailSync, 5000) // Wait 5 seconds for server to fully start
 
 // Health check endpoint for deployment monitoring
 app.get('/health', (req, res) => {
@@ -343,8 +387,18 @@ app.post('/api/accounts/add', authenticateToken, async (req, res) => {
 
         const account = await database.addEmailAccount(req.user.id, accountData)
         
-        // Email sync will be handled by dedicated Python service
-        console.log(`📧 Email account added for user ${req.user.id}. Sync will be handled by email-sync service.`)
+        // Trigger immediate email sync for this account
+        console.log(`📧 Email account added for user ${req.user.id}. Starting immediate sync...`)
+        
+        // Start sync in background
+        setTimeout(async () => {
+            try {
+                await syncEmailsForUser(req.user.id)
+                console.log(`✅ Initial sync completed for user ${req.user.id}`)
+            } catch (syncError) {
+                console.error(`❌ Initial sync failed for user ${req.user.id}:`, syncError.message)
+            }
+        }, 2000) // Wait 2 seconds before starting sync
         
         res.status(201).json({
             message: 'Email account added successfully. Email sync will be handled by dedicated service.',
@@ -509,6 +563,16 @@ app.get('/api/public-stats', async (req, res) => {
         console.error('Public stats error:', error)
         res.status(500).json({ error: error.message })
     }
+})
+
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        message: 'Server is working',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV 
+    })
 })
 
 // Add sample emails for testing
@@ -704,6 +768,13 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     try {
         // Get user's email accounts and recent emails
         const accounts = await database.getUserEmailAccounts(req.user.id)
+        
+        // Check if user has email accounts configured
+        if (accounts.length === 0) {
+            // Redirect to setup if no accounts configured
+            return res.redirect('/setup')
+        }
+        
         const emails = await database.getUserEmails(req.user.id, 100)
         
         // Define categories for the dashboard
@@ -732,6 +803,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
             error: 'Failed to load dashboard data'
         })
     }
+})
+
+// Email setup page
+app.get('/setup', requireAuth, async (req, res) => {
+    const user = req.user;
+    res.render('setup', { user: user });
 })
 
 // Login page
@@ -958,7 +1035,147 @@ app.get('/api/rag-stats', authenticateToken, async (req, res) => {
     }
 });
 
-// Public test endpoint for email sync (no auth required for testing)
+// Email account setup endpoint
+app.post('/api/setup-email-accounts', authenticateToken, async (req, res) => {
+    try {
+        const { accounts } = req.body
+        const userId = req.user.id
+        
+        if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
+            return res.status(400).json({ error: 'At least one email account is required' })
+        }
+        
+        console.log(`📧 Setting up ${accounts.length} email accounts for user ${userId}`)
+        
+        // Remove existing email accounts for this user
+        await new Promise((resolve, reject) => {
+            database.db.run('DELETE FROM email_accounts WHERE user_id = ?', [userId], (err) => {
+                if (err) reject(err)
+                else resolve()
+            })
+        })
+        
+        const addedAccounts = []
+        
+        for (const account of accounts) {
+            if (!account.email || !account.password) {
+                continue
+            }
+            
+            try {
+                const accountData = {
+                    email: account.email,
+                    password: account.password.replace(/\s/g, ''), // Remove any spaces
+                    imapHost: 'imap.gmail.com',
+                    imapPort: 993,
+                    provider: 'gmail'
+                }
+                
+                const addedAccount = await database.addEmailAccount(userId, accountData)
+                addedAccounts.push(addedAccount)
+                console.log(`✅ Added email account: ${account.email}`)
+            } catch (error) {
+                console.error(`❌ Failed to add account ${account.email}:`, error.message)
+            }
+        }
+        
+        if (addedAccounts.length === 0) {
+            return res.status(400).json({ error: 'Failed to add any email accounts' })
+        }
+        
+        // Trigger immediate email sync for the user
+        console.log(`🚀 Starting immediate email sync for user ${userId}`)
+        setTimeout(async () => {
+            try {
+                await syncEmailsForUser(userId)
+                console.log(`✅ Initial email sync completed for user ${userId}`)
+            } catch (syncError) {
+                console.error(`❌ Email sync failed for user ${userId}:`, syncError.message)
+            }
+        }, 3000) // Wait 3 seconds before starting sync
+        
+        res.json({
+            success: true,
+            message: `Successfully configured ${addedAccounts.length} email accounts`,
+            accounts: addedAccounts.map(acc => ({ id: acc.id, email: acc.email }))
+        })
+        
+    } catch (error) {
+        console.error('❌ Email setup error:', error)
+        res.status(500).json({ error: error.message })
+    }
+})
+
+// Manual sync endpoint for testing
+app.post('/api/manual-sync', authenticateToken, async (req, res) => {
+    try {
+        console.log("🔄 Manual sync triggered by user:", req.user.id)
+        
+        await syncEmailsForUser(req.user.id)
+        
+        res.json({
+            success: true,
+            message: "Email sync completed successfully",
+            timestamp: new Date().toISOString()
+        })
+    } catch (error) {
+        console.error("❌ Manual sync error:", error)
+        res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
+// Quick login helper endpoint for development
+app.post('/api/quick-login', async (req, res) => {
+    try {
+        const { email } = req.body
+        
+        if (!email) {
+            return res.status(400).json({ error: 'Email required' })
+        }
+        
+        const user = await database.getUserByEmail(email)
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' })
+        }
+        
+        // Generate token for quick login
+        const token = generateToken(user)
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: false, // Set to true in production with HTTPS
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        })
+        
+        res.json({
+            success: true,
+            message: 'Quick login successful',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name
+            }
+        })
+    } catch (error) {
+        console.error('Quick login error:', error)
+        res.status(500).json({ error: 'Login failed' })
+    }
+})
+
+// Public endpoint to check sync status
+app.get('/api/sync-status', (req, res) => {
+    res.json({
+        syncEnabled: process.env.AUTO_SYNC_ENABLED === 'true',
+        syncInterval: parseInt(process.env.SYNC_INTERVAL_MINUTES) || 2,
+        lastSync: new Date().toISOString(),
+        emailSyncStarted: emailSyncStarted
+    })
+})
+
+// Test sync endpoint (temporary)
 app.post('/api/test-sync', async (req, res) => {
     try {
         console.log("🧪 Test sync endpoint triggered")
@@ -995,54 +1212,79 @@ app.post('/api/test-sync', async (req, res) => {
     }
 })
 
-// Auto-sync emails on server startup in production
+// Auto-sync emails on server startup 
 async function initializeEmailSync() {
     console.log("🚀 Initializing email sync...")
     
     try {
-        // Get or create default user for production
-        let user = await database.getUserByEmail('admin@production.local')
+        // Get or create your user account
+        let user = await database.getUserByEmail(process.env.USER_EMAIL || 'vikastg2000@gmail.com')
         if (!user) {
-            user = await database.addUser('admin@production.local', 'production123')
-            console.log("👤 Created production admin user:", user.id)
+            user = await database.addUser(process.env.USER_EMAIL || 'vikastg2000@gmail.com', 'vikas123')
+            console.log("👤 Created user account:", user.id)
         }
         
-        // Add email accounts for the user
+        // Add email accounts with proper passwords
         let accounts = await database.getUserEmailAccounts(user.id)
-        if (accounts.length === 0) {
-            const account1 = await database.addEmailAccount(user.id, process.env.GMAIL_PRIMARY_EMAIL)
-            console.log("📧 Added primary email account:", account1.id)
-            
-            if (process.env.GMAIL_SECONDARY_EMAIL) {
-                const account2 = await database.addEmailAccount(user.id, process.env.GMAIL_SECONDARY_EMAIL)
-                console.log("📧 Added secondary email account:", account2.id)
-            }
-        }
+        console.log(`📧 Found ${accounts.length} existing email accounts`)
         
-        // Start email sync after a delay to let server fully initialize
-        setTimeout(async () => {
-            console.log("📬 Starting automatic email sync...")
-            
+        // Add primary email account if not exists
+        const primaryExists = accounts.find(acc => acc.email === process.env.GMAIL_PRIMARY_EMAIL)
+        if (!primaryExists && process.env.GMAIL_PRIMARY_EMAIL) {
             try {
-                const result = await syncEmailsFromAccount({
+                await database.addEmailAccount(user.id, {
                     email: process.env.GMAIL_PRIMARY_EMAIL,
                     password: process.env.GMAIL_PRIMARY_PASSWORD,
-                    userId: user.id
+                    imapHost: 'imap.gmail.com',
+                    imapPort: 993,
+                    provider: 'gmail'
                 })
-                console.log("✅ Auto-sync completed:", result)
-            } catch (syncError) {
-                console.error("❌ Auto-sync failed:", syncError.message)
+                console.log("📧 Added primary email account:", process.env.GMAIL_PRIMARY_EMAIL)
+            } catch (err) {
+                console.error("❌ Error adding primary email:", err.message)
             }
-        }, 5000) // Wait 5 seconds after server start
+        }
+        
+        // Add secondary email account if not exists
+        const secondaryExists = accounts.find(acc => acc.email === process.env.GMAIL_SECONDARY_EMAIL)
+        if (!secondaryExists && process.env.GMAIL_SECONDARY_EMAIL) {
+            try {
+                await database.addEmailAccount(user.id, {
+                    email: process.env.GMAIL_SECONDARY_EMAIL,
+                    password: process.env.GMAIL_SECONDARY_PASSWORD,
+                    imapHost: 'imap.gmail.com',
+                    imapPort: 993,
+                    provider: 'gmail'
+                })
+                console.log("📧 Added secondary email account:", process.env.GMAIL_SECONDARY_EMAIL)
+            } catch (err) {
+                console.error("❌ Error adding secondary email:", err.message)
+            }
+        }
+        
+        // Start initial email sync after server initializes
+        setTimeout(async () => {
+            console.log("📬 Starting initial automatic email sync...")
+            
+            try {
+                await syncEmailsForUser(user.id)
+                console.log("✅ Initial auto-sync completed")
+            } catch (syncError) {
+                console.error("❌ Initial auto-sync failed:", syncError.message)
+            }
+        }, 3000) // Wait 3 seconds after server start
         
     } catch (error) {
         console.error("❌ Auto-sync initialization failed:", error)
     }
 }
 
-app.listen(4000, () => {
-    console.log("App is listening on port 4000")
-    console.log("🚀 Email sync and RAG services initialized")
+const PORT = process.env.PORT || 4000
+
+app.listen(PORT, () => {
+    console.log(`App is listening on port ${PORT}`)
+    console.log("🚀 Real-time email sync service will be handled by dedicated Python service")
+    console.log("🚀 Real-time email sync service initialized")
     
     // Initialize email sync for production
     initializeEmailSync()
