@@ -19,7 +19,15 @@ const authenticateToken = async (req, res, next) => {
     const cookieToken = req.cookies?.auth_token || req.cookies?.token;
     const finalToken = token || cookieToken;
 
+    console.log('🔐 Auth check - Header token:', token ? 'present' : 'none');
+    console.log('🔐 Auth check - Cookie tokens:', {
+        auth_token: req.cookies?.auth_token ? 'present' : 'none',
+        token: req.cookies?.token ? 'present' : 'none'
+    });
+    console.log('🔐 Auth check - Final token:', finalToken ? 'present' : 'none');
+
     if (!finalToken) {
+        console.log('🔐 Auth failed - No token found');
         return res.status(401).json({ error: 'Access token required' });
     }
 
@@ -28,12 +36,15 @@ const authenticateToken = async (req, res, next) => {
         const user = await database.getUserById(decoded.userId);
         
         if (!user) {
+            console.log('🔐 Auth failed - Invalid user');
             return res.status(401).json({ error: 'Invalid token' });
         }
 
+        console.log('🔐 Auth success for user:', user.name);
         req.user = user;
         next();
     } catch (error) {
+        console.log('🔐 Auth failed - Token verification error:', error.message);
         return res.status(403).json({ error: 'Invalid token' });
     }
 };

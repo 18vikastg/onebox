@@ -870,7 +870,7 @@ app.post('/api/suggest-reply', authenticateToken, async (req, res) => {
 
         // Try to generate reply using OpenAI API first
         try {
-            const suggestion = await generateReplyWithAI(emailContent, sender, subject, context, requestId);
+            const suggestion = await generateReplyWithAI(emailContent, sender, subject, context, requestId, req.user);
             
             return res.json({
                 success: true,
@@ -887,7 +887,7 @@ app.post('/api/suggest-reply', authenticateToken, async (req, res) => {
             console.log('🔄 OpenAI failed, falling back to template engine:', aiError.message);
             
             // Fallback to template-based response
-            const fallbackSuggestion = generateTemplateFallback(emailContent, sender);
+            const fallbackSuggestion = generateTemplateFallback(emailContent, sender, req.user);
             
             return res.json({
                 success: true,
@@ -906,14 +906,16 @@ app.post('/api/suggest-reply', authenticateToken, async (req, res) => {
         console.error('❌ Reply generation error:', error);
         
         // Final fallback response
+        const userCalendarLink = req.user.email.includes('vikastg') ? 'https://cal.com/vikastg' : `https://cal.com/${req.user.name.toLowerCase().replace(/\s+/g, '')}`;
+        
         return res.json({
             success: true,
             suggestion: `Thank you for your email. I appreciate you reaching out.
 
-I'd be happy to discuss this further. Please feel free to schedule a convenient time: https://cal.com/vikastg
+I'd be happy to discuss this further. Please feel free to schedule a convenient time: ${userCalendarLink}
 
 Best regards,
-Vikas T G`,
+${req.user.name}`,
             confidence: 0.5,
             method: 'Default Template',
             scenario: 'General',
@@ -952,7 +954,7 @@ function extractTextFromHTML(htmlContent) {
 }
 
 // OpenAI integration function with enhanced RAG
-async function generateReplyWithAI(emailContent, sender, subject, context, requestId = 'unknown') {
+async function generateReplyWithAI(emailContent, sender, subject, context, requestId = 'unknown', user) {
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
         throw new Error('OpenAI API key not configured');
@@ -969,8 +971,8 @@ async function generateReplyWithAI(emailContent, sender, subject, context, reque
         // Step 1: Retrieve relevant training examples from RAG database
         const relevantExamples = retrieveRelevantExamples(cleanContent, subject);
         
-        // Step 2: Generate reply using RAG approach
-        const ragPrompt = buildRAGPrompt(cleanContent, subject, sender, relevantExamples);
+        // Step 2: Generate reply using RAG approach with user-specific info
+        const ragPrompt = buildRAGPrompt(cleanContent, subject, sender, relevantExamples, user);
         
         console.log(`🧠 RAG [${requestId}]: Using ${relevantExamples.length} relevant examples for context`);
         if (relevantExamples.length > 0) {
@@ -988,7 +990,7 @@ async function generateReplyWithAI(emailContent, sender, subject, context, reque
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are Vikas T G, a Full Stack Developer. Generate professional email replies based on the provided examples and context. Follow the examples closely while adapting to the specific email content.'
+                        content: `You are ${user.name}, a professional. Generate professional email replies based on the provided examples and context. Follow the examples closely while adapting to the specific email content.`
                     },
                     {
                         role: 'user',
@@ -1244,156 +1246,67 @@ function retrieveRelevantExamples(emailContent, subject) {
 }
 
 // Build RAG prompt with retrieved examples
-function buildRAGPrompt(emailContent, subject, sender, relevantExamples) {
+function buildRAGPrompt(emailContent, subject, sender, relevantExamples, user) {
     console.log('🎯 Building RAG prompt with examples:', relevantExamples.length);
     
-    let prompt = `You are Vikas T G, a Full Stack Developer. Generate a professional email reply based on the training examples provided.
+    let prompt = `You are an intelligent email assistant. Analyze the email content and generate an appropriate, professional reply.
 
-PERSONAL DETAILS:
-- Name: Vikas T G
-- Role: Full Stack Developer & AI Engineer  
-- Email: vikastg2000@gmail.com
-- Phone: +91-8792283829
-- Calendar Booking: https://cal.com/vikastg
-- Portfolio: https://vikastg.vercel.app
-- Location: India
-- Status: Available for opportunities
-
-EMAIL TO REPLY TO:
+EMAIL TO ANALYZE AND REPLY TO:
 From: ${sender}
 Subject: ${subject}
 Content: ${emailContent}
 
+INSTRUCTIONS:
+1. Read and understand the email content carefully
+2. Determine what the sender wants or is asking for
+3. Generate an intelligent, contextual response based on the email content
+4. Be professional, helpful, and appropriate to the context
+5. DO NOT use templates or pre-written responses
+6. Analyze the specific content and respond accordingly
+7. Always end with "Best regards," followed by: ${user.name}
+
 `;
 
     if (relevantExamples.length > 0) {
-        prompt += `TRAINING EXAMPLES TO FOLLOW:\n`;
+        prompt += `REFERENCE EXAMPLES (for tone and style, not content):
+`;
         relevantExamples.forEach((example, index) => {
+            // Show examples for style reference, but remove personal details
+            const genericOutput = example.output
+                .replace(/Vikas T G/g, '[NAME]')
+                .replace(/https:\/\/cal\.com\/vikastg/g, '[CALENDAR_LINK]')
+                .replace(/https:\/\/vikastg\.vercel\.app/g, '[PORTFOLIO_LINK]')
+                .replace(/vikastg2020@gmail\.com/g, '[EMAIL]')
+                .replace(/vikastg2000@gmail\.com/g, '[EMAIL]');
+            
             prompt += `
-Example ${index + 1} - ${example.scenario.toUpperCase()}:
-When someone says: "${example.input}"
-You should reply: "${example.output}"
+Example ${index + 1} (${example.scenario}):
+Input: "${example.input}"
+Style Reference: "${genericOutput.substring(0, 200)}..."
 `;
         });
         
-        prompt += `\nIMPORTANT INSTRUCTIONS:
-1. Follow the pattern from the examples above
-2. If the email is about interviews/shortlisting, ALWAYS include the calendar link: https://cal.com/vikastg
-3. Keep the reply professional but friendly
-4. Address the specific content of the received email
-5. Match the tone and structure of the example replies
-6. For interview invitations, express enthusiasm and provide the booking link
-
-Generate a reply that follows the examples:`;
-    } else {
-        // Fallback when no examples match
-        prompt += `No specific training examples matched. Generate a professional reply that:
-1. Addresses the email content appropriately  
-2. If it's about jobs/interviews, include calendar link: https://cal.com/vikastg
-3. If it's about projects, mention portfolio: https://vikastg.vercel.app
-4. Be professional and helpful
-
-Generate a professional reply:`;
+        prompt += `
+These examples show the tone and professionalism level to match. Now analyze the actual email content and generate a unique, intelligent response.`;
     }
+    
+    prompt += `
+
+Generate an intelligent reply that addresses the specific email content:`;
     
     return prompt;
 }
 
 // Enhanced template fallback function  
-function generateTemplateFallback(emailContent, sender) {
-    const lowerContent = emailContent.toLowerCase();
-    const lowerSender = sender.toLowerCase();
+function generateTemplateFallback(emailContent, sender, user) {
+    console.log(`🔄 Generating AI-powered reply for: ${sender} - ${emailContent.substring(0, 100)}...`);
     
-    console.log(`🔄 Generating template fallback for: ${sender} - ${emailContent.substring(0, 100)}...`);
-    
-    // Job/Interview related
-    if (lowerContent.includes('interview') || lowerContent.includes('shortlisted') || 
-        lowerContent.includes('technical') || lowerContent.includes('position') ||
-        lowerContent.includes('role') || lowerContent.includes('hiring')) {
-        return `Thank you for considering my profile for this position! I'm very interested in this opportunity.
-
-I'm available for an interview at your convenience. Please feel free to schedule a time that works best for you: https://cal.com/vikastg
-
-I look forward to discussing how my skills can contribute to your team.
+    // No more hardcoded templates! Let the AI handle everything
+    // This function now just provides a basic fallback if AI completely fails
+    return `Thank you for your email. I've received your message and will respond appropriately.
 
 Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer
-Portfolio: https://vikastg.vercel.app`;
-    }
-    
-    // Project/Collaboration related
-    if (lowerContent.includes('project') || lowerContent.includes('collaboration') || 
-        lowerContent.includes('development') || lowerContent.includes('freelance') ||
-        lowerContent.includes('work together') || lowerContent.includes('build')) {
-        return `Thank you for reaching out about this project! I'm excited about the opportunity to collaborate with you.
-
-I'd love to discuss the project requirements, timeline, and technical specifications in detail. Please feel free to schedule a call: https://cal.com/vikastg
-
-Looking forward to working together on this exciting project!
-
-Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer
-Portfolio: https://vikastg.vercel.app`;
-    }
-    
-    // Technical discussion/help
-    if (lowerContent.includes('technical') || lowerContent.includes('code') || 
-        lowerContent.includes('help') || lowerContent.includes('question') ||
-        lowerContent.includes('issue') || lowerContent.includes('bug')) {
-        return `Thank you for reaching out! I'd be happy to help with your technical question.
-
-Based on your message, I can provide insights and assistance. Would you like to schedule a quick call to discuss this in detail? https://cal.com/vikastg
-
-Feel free to share more context, and I'll do my best to help you find a solution.
-
-Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer`;
-    }
-    
-    // LinkedIn/Networking
-    if (lowerSender.includes('linkedin') || lowerContent.includes('connection') || 
-        lowerContent.includes('network') || lowerContent.includes('connect')) {
-        return `Thank you for connecting! I appreciate you reaching out.
-
-I'm always interested in connecting with fellow professionals in the tech industry. I'd love to learn more about your work and explore potential collaboration opportunities.
-
-Feel free to reach out anytime if you'd like to discuss projects or just chat about technology!
-
-Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer
-Portfolio: https://vikastg.vercel.app`;
-    }
-    
-    // Business inquiry
-    if (lowerContent.includes('business') || lowerContent.includes('service') || 
-        lowerContent.includes('proposal') || lowerContent.includes('quotation')) {
-        return `Thank you for your business inquiry! I appreciate you considering my services.
-
-I'd be happy to discuss your requirements in detail and provide you with a tailored solution. Let's schedule a consultation call: https://cal.com/vikastg
-
-Looking forward to understanding your needs and how I can help your business succeed.
-
-Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer
-Portfolio: https://vikastg.vercel.app`;
-    }
-    
-    // Default personalized response
-    return `Thank you for reaching out! I appreciate your message.
-
-I'd be happy to discuss this further with you. Please feel free to schedule a convenient time for us to connect: https://cal.com/vikastg
-
-Looking forward to hearing from you!
-
-Best regards,
-Vikas T G
-Full Stack Developer & AI Engineer
-Portfolio: https://vikastg.vercel.app`;
+${user.name}`;
 }
 
 // RAG stats endpoint
@@ -1514,6 +1427,8 @@ app.post('/api/quick-login', async (req, res) => {
     try {
         const { email } = req.body
         
+        console.log('🔑 Quick login attempt for:', email)
+        
         if (!email) {
             return res.status(400).json({ error: 'Email required' })
         }
@@ -1525,12 +1440,16 @@ app.post('/api/quick-login', async (req, res) => {
         
         // Generate token for quick login
         const token = generateToken(user)
+        console.log('🔑 Generated token for user:', user.name)
         
-        res.cookie('token', token, {
+        res.cookie('auth_token', token, {
             httpOnly: true,
             secure: false, // Set to true in production with HTTPS
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            sameSite: 'lax' // Add this for better compatibility
         })
+        
+        console.log('🔑 Set auth_token cookie for:', user.name)
         
         res.json({
             success: true,
@@ -1545,6 +1464,86 @@ app.post('/api/quick-login', async (req, res) => {
         console.error('Quick login error:', error)
         res.status(500).json({ error: 'Login failed' })
     }
+})
+
+// Test endpoint for RAG personalization
+app.post('/api/test-rag-personalization', authenticateToken, async (req, res) => {
+    try {
+        const { testEmailContent, testSender, testSubject } = req.body
+        
+        // Default test email if none provided
+        const emailContent = testEmailContent || "Hi, Your resume has been shortlisted for the Full Stack Developer position. When would be a good time for you to attend the technical interview?"
+        const sender = testSender || "hr@techcorp.com"
+        const subject = testSubject || "Technical Interview Invitation"
+        
+        console.log(`🧪 Testing RAG personalization for user: ${req.user.name} (${req.user.email})`)
+        
+        try {
+            // Try OpenAI first
+            const suggestion = await generateReplyWithAI(emailContent, sender, subject, {}, 'test-rag', req.user)
+            
+            res.json({
+                success: true,
+                test_user: {
+                    name: req.user.name,
+                    email: req.user.email
+                },
+                input: {
+                    emailContent,
+                    sender,
+                    subject
+                },
+                ai_reply: suggestion,
+                method: "OpenAI + RAG",
+                message: "RAG personalization test completed successfully with OpenAI"
+            })
+        } catch (aiError) {
+            console.log(`🔄 OpenAI failed for test, using template fallback: ${aiError.message}`)
+            
+            // Fallback to template system
+            const suggestion = generateTemplateFallback(emailContent, sender, req.user)
+            
+            res.json({
+                success: true,
+                test_user: {
+                    name: req.user.name,
+                    email: req.user.email
+                },
+                input: {
+                    emailContent,
+                    sender,
+                    subject
+                },
+                ai_reply: suggestion,
+                method: "Template Fallback",
+                message: "RAG personalization test completed successfully with template fallback (OpenAI not available)"
+            })
+        }
+        
+    } catch (error) {
+        console.error('RAG personalization test error:', error)
+        res.status(500).json({ 
+            success: false,
+            error: error.message,
+            test_user: {
+                name: req.user.name,
+                email: req.user.email
+            }
+        })
+    }
+})
+
+// Simple test endpoint to verify user authentication
+app.get('/api/test-auth', authenticateToken, (req, res) => {
+    res.json({
+        success: true,
+        message: "Authentication working",
+        user: {
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email
+        }
+    })
 })
 
 // Public endpoint to check sync status

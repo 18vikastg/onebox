@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Personalization Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-section h3 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .current-user {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .user-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .user-card:hover {
+            background-color: #f0f8ff;
+            border-color: #3498db;
+        }
+        .user-card.active {
+            background-color: #e7f3ff;
+            border-color: #3498db;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 RAG Personalization Test</h1>
+        <p style="text-align: center; color: #666;">Test the multi-user RAG system to ensure each user gets personalized AI replies</p>
+        
+        <div class="current-user" id="currentUser">
+            <strong>Current User:</strong> <span id="userInfo">Not logged in</span>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Select User to Test With</h3>
+            <div class="user-grid" id="userGrid">
+                <!-- Users will be loaded here -->
+            </div>
+            <button onclick="loadUsers()">🔄 Refresh Users</button>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Test Email Content</h3>
+            <div class="form-group">
+                <label for="testSender">From (Sender):</label>
+                <input type="email" id="testSender" value="hr@techcorp.com" placeholder="sender@company.com">
+            </div>
+            <div class="form-group">
+                <label for="testSubject">Subject:</label>
+                <input type="text" id="testSubject" value="Technical Interview Invitation" placeholder="Email subject">
+            </div>
+            <div class="form-group">
+                <label for="testContent">Email Content:</label>
+                <textarea id="testContent" placeholder="Enter test email content...">Hi, Your resume has been shortlisted for the Full Stack Developer position. When would be a good time for you to attend the technical interview?</textarea>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Run Test</h3>
+            <button onclick="testAuth()">🔐 Test Authentication</button>
+            <button onclick="testRAGPersonalization()">🚀 Test RAG Personalization</button>
+            <button onclick="quickLogin()">🔑 Quick Login Selected User</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let selectedUser = null;
+        
+        // Available test users
+        const testUsers = [
+            { id: 1, name: "Vikas T G", email: "vikastg2020@gmail.com" },
+            { id: 2, name: "Vikas T. G", email: "vikastg2000@gmail.com" },
+            { id: 3, name: "Test User", email: "testuser@example.com" },
+            { id: 8, name: "Vikas Test", email: "vikas.test@example.com" },
+            { id: 11, name: "Demo User", email: "demo@example.com" },
+            { id: 16, name: "RAG Test User", email: "test.rag@example.com" },
+            { id: 18, name: "New Test User", email: "newuser@example.com" },
+            { id: 19, name: "Tejas", email: "tejas@example.com" }
+        ];
+
+        function loadUsers() {
+            const userGrid = document.getElementById('userGrid');
+            userGrid.innerHTML = '';
+            
+            testUsers.forEach(user => {
+                const userCard = document.createElement('div');
+                userCard.className = 'user-card';
+                userCard.innerHTML = `
+                    <strong>${user.name}</strong><br>
+                    <small>${user.email}</small><br>
+                    <small>ID: ${user.id}</small>
+                `;
+                userCard.onclick = () => selectUser(user, userCard);
+                userGrid.appendChild(userCard);
+            });
+        }
+
+        function selectUser(user, cardElement) {
+            // Remove active class from all cards
+            document.querySelectorAll('.user-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Add active class to selected card
+            cardElement.classList.add('active');
+            selectedUser = user;
+            
+            addResult(`Selected user: ${user.name} (${user.email})`, 'info');
+        }
+
+        async function quickLogin() {
+            if (!selectedUser) {
+                addResult('❌ Please select a user first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/quick-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Important: include cookies
+                    body: JSON.stringify({ email: selectedUser.email })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('userInfo').textContent = `${data.user.name} (${data.user.email})`;
+                    addResult(`✅ Logged in as: ${data.user.name}`, 'success');
+                } else {
+                    addResult(`❌ Login failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Login error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAuth() {
+            try {
+                const response = await fetch('/api/test-auth', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    addResult(`✅ Authentication Working!\nUser: ${data.user.name}\nEmail: ${data.user.email}`, 'success');
+                } else {
+                    addResult(`❌ Authentication failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Authentication test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRAGPersonalization() {
+            const sender = document.getElementById('testSender').value;
+            const subject = document.getElementById('testSubject').value;
+            const content = document.getElementById('testContent').value;
+
+            if (!sender || !subject || !content) {
+                addResult('❌ Please fill in all email fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/test-rag-personalization', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Important: include cookies
+                    body: JSON.stringify({
+                        testEmailContent: content,
+                        testSender: sender,
+                        testSubject: subject
+                    })
+                });
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    if (text.includes('<!DOCTYPE')) {
+                        addResult('❌ Authentication failed - getting HTML instead of JSON. Please login first using Quick Login button.', 'error');
+                        return;
+                    }
+                    addResult(`❌ Unexpected response format: ${text.substring(0, 200)}...`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const result = `
+🎯 RAG PERSONALIZATION TEST RESULT
+=====================================
+
+👤 Test User: ${data.test_user.name}
+📧 Email: ${data.test_user.email}
+
+📨 INPUT EMAIL:
+From: ${data.input.sender}
+Subject: ${data.input.subject}
+Content: ${data.input.emailContent}
+
+🤖 AI REPLY GENERATED:
+${data.ai_reply}
+
+✅ Status: ${data.message}
+=====================================`;
+                    
+                    addResult(result, 'success');
+                } else {
+                    addResult(`❌ Test failed: ${data.error}\nUser: ${data.test_user?.name || 'Unknown'}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Test error: ${error.message}`, 'error');
+            }
+        }
+
+        function addResult(message, type) {
+            const results = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type === 'error' ? 'error' : 'success'}`;
+            resultDiv.textContent = message;
+            results.appendChild(resultDiv);
+            
+            // Scroll to the new result
+            resultDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Load users on page load
+        window.onload = loadUsers;
+    </script>
+</body>
+</html>
