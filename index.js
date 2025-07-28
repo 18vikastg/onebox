@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config()
+
 let express = require('express')
 let fs = require('fs')
 const { parse } = require('csv-parse')
@@ -1299,14 +1302,92 @@ Generate an intelligent reply that addresses the specific email content:`;
 
 // Enhanced template fallback function  
 function generateTemplateFallback(emailContent, sender, user) {
-    console.log(`🔄 Generating AI-powered reply for: ${sender} - ${emailContent.substring(0, 100)}...`);
+    console.log(`🔄 Generating intelligent fallback reply for: ${sender} - ${emailContent.substring(0, 100)}...`);
     
-    // No more hardcoded templates! Let the AI handle everything
-    // This function now just provides a basic fallback if AI completely fails
-    return `Thank you for your email. I've received your message and will respond appropriately.
+    // Intelligent content-based fallback (since OpenAI quota exceeded)
+    const content = emailContent.toLowerCase();
+    const subject = sender.toLowerCase();
+    
+    // Job-related emails
+    if (content.includes('job') || content.includes('position') || content.includes('intern') || 
+        content.includes('hiring') || content.includes('opportunity') || content.includes('career') ||
+        content.includes('apply') || content.includes('application') || subject.includes('naukri') ||
+        subject.includes('indeed') || subject.includes('linkedin')) {
+        return `Dear Hiring Team,
+
+Thank you for considering me for this opportunity. I am actively seeking full-stack developer positions and would be interested in learning more about the role and requirements.
+
+I have experience with React, Node.js, and modern web technologies. I am available for interviews and can provide my updated resume upon request.
+
+Looking forward to hearing from you.
+
+Best regards,
+${user.name}
+${user.email}`;
+    }
+    
+    // Interview invitations
+    if (content.includes('interview') || content.includes('meeting') || content.includes('call') || 
+        content.includes('schedule') || content.includes('available')) {
+        return `Dear Team,
+
+Thank you for the interview invitation. I am very interested in this opportunity and would be happy to schedule a meeting.
+
+Please let me know your preferred time slots, and I will accommodate accordingly. I am flexible with timing and can meet via phone, video call, or in person as needed.
+
+Looking forward to our conversation.
+
+Best regards,
+${user.name}
+${user.email}`;
+    }
+    
+    // Technical/coding related
+    if (content.includes('code') || content.includes('technical') || content.includes('developer') || 
+        content.includes('programming') || content.includes('software') || content.includes('react') ||
+        content.includes('node') || content.includes('javascript')) {
+        return `Hello,
+
+Thank you for reaching out regarding technical opportunities. I am a full-stack developer with experience in modern web technologies including React, Node.js, and various JavaScript frameworks.
+
+I would be happy to discuss technical requirements, share my portfolio, or participate in any coding assessments you might have.
+
+Please feel free to contact me to discuss further.
+
+Best regards,
+${user.name}
+${user.email}`;
+    }
+    
+    // Security alerts
+    if (content.includes('security') || content.includes('alert') || content.includes('password') || 
+        content.includes('verification') || content.includes('account')) {
+        return `Thank you for the security notification. I acknowledge receipt of this alert and will take appropriate action if needed.
 
 Best regards,
 ${user.name}`;
+    }
+    
+    // Newsletter/updates
+    if (content.includes('newsletter') || content.includes('update') || content.includes('news') || 
+        subject.includes('groww') || subject.includes('digest') || content.includes('notification')) {
+        return `Thank you for the update. I appreciate being kept informed.
+
+Best regards,
+${user.name}`;
+    }
+    
+    // Default intelligent response
+    return `Dear ${sender.includes('<') ? sender.split('<')[0].trim() : 'Team'},
+
+Thank you for your email. I have received your message and understand your inquiry.
+
+I will review the details and get back to you with a proper response shortly. If this is time-sensitive, please feel free to reach out to me directly.
+
+Best regards,
+${user.name}
+${user.email || ''}
+${user.phone ? 'Phone: ' + user.phone : ''}`;
 }
 
 // RAG stats endpoint

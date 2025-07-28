@@ -12,6 +12,7 @@
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "csv-parse": "^6.1.0",
+    "dotenv": "^17.2.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
