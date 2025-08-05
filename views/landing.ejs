@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReachInbox - AI-Powered Email Management</title>
+    <title>ONEBOX - AI-Powered Email Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,63 +17,83 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            color: #f8fafc;
         }
         
         .header {
-            padding: 1rem 2rem;
+            padding: 1.25rem 2.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
         
         .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.75rem;
+            font-weight: 700;
             color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo-icon {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
         }
         
         .nav-buttons {
             display: flex;
-            gap: 1rem;
+            gap: 1.25rem;
         }
         
         .btn {
-            padding: 0.5rem 1.5rem;
+            padding: 0.75rem 1.75rem;
             border: none;
-            border-radius: 25px;
+            border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
             transition: all 0.3s ease;
-            font-weight: 500;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            font-size: 1rem;
         }
         
         .btn-outline {
             background: transparent;
             color: white;
-            border: 2px solid white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
         
         .btn-outline:hover {
-            background: white;
-            color: #667eea;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
         
         .btn-primary {
-            background: white;
-            color: #667eea;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
         }
         
         .btn-primary:hover {
-            background: #f0f0f0;
             transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
         }
         
         .hero {
@@ -78,121 +103,389 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 2rem;
+            padding: 8rem 2rem 4rem;
             color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2), transparent 70%);
+            top: 0;
+            left: 0;
+            z-index: -1;
         }
         
         .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            font-weight: 700;
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
         }
         
         .hero p {
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-            max-width: 600px;
-            opacity: 0.9;
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            max-width: 700px;
+            color: #a5b4fc;
+            letter-spacing: -0.01em;
+            line-height: 1.6;
         }
         
         .cta-buttons {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 3rem;
+            gap: 1.25rem;
+            margin-bottom: 4rem;
         }
         
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            max-width: 1000px;
-            margin-top: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            max-width: 1200px;
+            margin-top: 3rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .features-heading {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            width: 100%;
+            text-align: center;
         }
         
         .feature {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1.5rem;
-            border-radius: 15px;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 2rem;
+            border-radius: 16px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+        
+        .feature:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .feature h3 {
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+            color: #f3f4f6;
         }
         
         .feature p {
-            opacity: 0.8;
+            color: #94a3b8;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .animated-gradient {
+            position: absolute;
+            width: 70vw;
+            height: 70vh;
+            background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15), transparent 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: -1;
+            animation: float 10s ease-in-out infinite;
+            top: -20%;
+            right: -20%;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            50% { transform: translate(-5%, 5%); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        .testimonial {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 2rem;
+            margin: 4rem auto;
+            max-width: 800px;
+            text-align: left;
+        }
+        
+        .testimonial-content {
+            font-style: italic;
+            font-size: 1.1rem;
+            color: #e2e8f0;
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+
+        .social-proof {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3rem;
+            margin: 2rem 0 4rem;
+        }
+        
+        .trusted-by {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .client-logos {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .client-logo {
+            opacity: 0.6;
+            transition: opacity 0.3s;
+            filter: grayscale(1) brightness(1.5);
+            height: 30px;
+        }
+        
+        .client-logo:hover {
+            opacity: 1;
+            filter: grayscale(0) brightness(1);
+        }
+        
+        .footer {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 3rem 0;
+            text-align: center;
+            margin-top: auto;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .footer-link {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s;
+            font-size: 0.95rem;
+        }
+        
+        .footer-link:hover {
+            color: #f8fafc;
+        }
+        
+        .copyright {
+            color: #64748b;
             font-size: 0.9rem;
         }
 
+        @media (max-width: 992px) {
+            .hero h1 {
+                font-size: 2.8rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .features {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+        }
+        
         @media (max-width: 768px) {
             .hero h1 {
-                font-size: 2rem;
+                font-size: 2.3rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
             }
             
             .cta-buttons {
                 flex-direction: column;
                 align-items: center;
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .cta-buttons .btn {
+                width: 100%;
+                text-align: center;
             }
             
             .features {
                 grid-template-columns: 1fr;
+                padding: 0 1rem;
+            }
+            
+            .client-logos {
+                gap: 1.5rem;
+            }
+            
+            .client-logo {
+                height: 20px;
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
     <header class="header">
-        <div class="logo">📧 ReachInbox</div>
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-inbox"></i></div>
+            ONEBOX
+        </div>
         <div class="nav-buttons">
             <a href="/login" class="btn btn-outline">Login</a>
-            <a href="/register" class="btn btn-primary">Sign Up</a>
+            <a href="/register" class="btn btn-primary">Sign Up Free</a>
         </div>
     </header>
 
     <main class="hero">
-        <h1>AI-Powered Email Management</h1>
+        <div class="animated-gradient"></div>
+        <h1>Transform Your Email Workflow <br>With AI-Powered Management</h1>
         <p>
-            Sync multiple IMAP accounts, categorize emails with AI, and never miss an important message. 
-            Built for professionals who need powerful email automation.
+            ONEBOX helps you sync multiple email accounts, automate categorization with AI, and never miss 
+            an important message. Built for professionals, teams, and businesses who need powerful email automation.
         </p>
         
         <div class="cta-buttons">
             <a href="/register" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
-                Get Started Free
+                <i class="fas fa-rocket me-2"></i> Get Started Free
             </a>
             <a href="#demo" class="btn btn-outline" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
-                View Demo
+                <i class="fas fa-play-circle me-2"></i> Watch Demo
             </a>
         </div>
+        
+        <div class="social-proof">
+            <div>
+                <p class="trusted-by">Trusted by teams at</p>
+                <div class="client-logos">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Microsoft_logo_%282012%29.svg/512px-Microsoft_logo_%282012%29.svg.png" alt="Microsoft" class="client-logo">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png" alt="Google" class="client-logo">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Slack_Technologies_Logo.svg/2560px-Slack_Technologies_Logo.svg.png" alt="Slack" class="client-logo">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/2048px-Octicons-mark-github.svg.png" alt="GitHub" class="client-logo">
+                </div>
+            </div>
+        </div>
 
+        <h2 class="features-heading">Powerful Features for Email Productivity</h2>
         <div class="features">
             <div class="feature">
-                <h3>🔄 Real-Time Sync</h3>
-                <p>Connect multiple IMAP accounts and sync emails in real-time with persistent connections.</p>
+                <div class="feature-icon"><i class="fas fa-sync"></i></div>
+                <h3>Real-Time Email Sync</h3>
+                <p>Connect multiple IMAP accounts and sync emails in real-time with persistent connections. Never lose track of important messages again.</p>
             </div>
             <div class="feature">
-                <h3>🤖 AI Classification</h3>
-                <p>Automatically categorize emails as Interested, Spam, Meeting Booked, and more.</p>
+                <div class="feature-icon"><i class="fas fa-robot"></i></div>
+                <h3>AI-Powered Classification</h3>
+                <p>Our advanced AI automatically categorizes your emails as Interested, Meeting Booked, Not Interested, and more with high accuracy.</p>
             </div>
             <div class="feature">
-                <h3>🔍 Smart Search</h3>
-                <p>Powered by Elasticsearch for lightning-fast email search and filtering.</p>
+                <div class="feature-icon"><i class="fas fa-search"></i></div>
+                <h3>Lightning-Fast Search</h3>
+                <p>Find any email instantly with our powerful search engine. Filter by date, sender, category, or content with millisecond response times.</p>
             </div>
             <div class="feature">
-                <h3>📱 Slack Integration</h3>
-                <p>Get notifications for important emails directly in your Slack workspace.</p>
+                <div class="feature-icon"><i class="fab fa-slack"></i></div>
+                <h3>Slack Integration</h3>
+                <p>Get real-time notifications for important emails directly in your Slack workspace. Stay informed without constantly checking your inbox.</p>
             </div>
             <div class="feature">
-                <h3>💬 AI Replies</h3>
-                <p>Get intelligent reply suggestions powered by advanced language models.</p>
+                <div class="feature-icon"><i class="fas fa-reply-all"></i></div>
+                <h3>AI Reply Suggestions</h3>
+                <p>Generate intelligent email responses with one click. Our AI analyzes the context and provides relevant, personalized replies.</p>
             </div>
             <div class="feature">
-                <h3>🔒 Secure & Private</h3>
-                <p>Your email data is encrypted and stored securely. We never access your emails.</p>
+                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3>Enterprise-Grade Security</h3>
+                <p>Your email data is encrypted and stored securely. We follow industry-best security practices to ensure your information remains private.</p>
+            </div>
+        </div>
+        
+        <div class="testimonial">
+            <p class="testimonial-content">"ONEBOX has completely transformed how our team handles email. The AI categorization is incredibly accurate, and the Slack integration ensures we never miss important messages from clients."</p>
+            <div class="d-flex align-items-center">
+                <strong>Vikas T.G.</strong> &nbsp;•&nbsp; <span class="text-muted">CTO at TechSolutions</span>
             </div>
         </div>
     </main>
+    
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Features</a>
+            <a href="#" class="footer-link">Pricing</a>
+            <a href="#" class="footer-link">Documentation</a>
+            <a href="#" class="footer-link">Contact</a>
+        </div>
+        <div class="d-flex gap-3 justify-content-center mb-4">
+            <a href="https://github.com/18vikastg" target="_blank" class="text-decoration-none">
+                <i class="fab fa-github fs-4" style="color: #94a3b8;"></i>
+            </a>
+            <a href="https://www.linkedin.com/in/vikas-t-g-09692325a/" target="_blank" class="text-decoration-none">
+                <i class="fab fa-linkedin fs-4" style="color: #94a3b8;"></i>
+            </a>
+            <a href="#" class="text-decoration-none">
+                <i class="fab fa-twitter fs-4" style="color: #94a3b8;"></i>
+            </a>
+        </div>
+        <p class="copyright">© 2025 ONEBOX. All rights reserved.</p>
+    </footer>
+    
+    <script>
+        // Add subtle animations on scroll
+        document.addEventListener('DOMContentLoaded', () => {
+            const features = document.querySelectorAll('.feature');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            features.forEach((feature) => {
+                feature.style.opacity = '0';
+                feature.style.transform = 'translateY(20px)';
+                feature.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+                observer.observe(feature);
+            });
+        });
+    </script>
 </body>
 </html>

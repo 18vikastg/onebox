@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONEBOX - Email Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --dark-color: #1f2937;
+            --light-bg: #f8fafc;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            padding: 30px;
+        }
+        
+        .gradient-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .email-row:hover {
+            background-color: rgba(79, 70, 229, 0.05);
+            transform: scale(1.002);
+            transition: all 0.2s ease;
+        }
+        
+        .search-card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, var(--dark-color) 0%, #374151 100%);
+            color: white;
+            margin-top: 50px;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        .footer a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer a:hover {
+            color: var(--accent-color);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="text-center mb-5">
+                <h1 class="gradient-header display-4 fw-bold mb-3">
+                    <i class="fas fa-inbox feature-icon"></i><br>
+                    ONEBOX Email Dashboard
+                </h1>
+                <p class="lead text-muted">Intelligent Email Management & AI-Powered Classification</p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <span class="badge bg-success fs-6 pulse-animation">
+                        <i class="fas fa-database me-1"></i><%= storageMode || 'JSON' %> Storage
+                    </span>
+                    <% if (typeof totalEmails !== 'undefined') { %>
+                        <span class="badge bg-primary fs-6">
+                            <i class="fas fa-envelope me-1"></i><%= totalEmails %> Total Emails
+                        </span>
+                    <% } %>
+                    <span class="badge bg-info fs-6">
+                        <i class="fas fa-robot me-1"></i>AI Powered
+                    </span>
+                    <span class="badge bg-warning fs-6">
+                        <i class="fas fa-bolt me-1"></i>Real-time Sync
+                    </span>
+                </div>
+            </div>
+        
+        <!-- Elasticsearch Success Banner -->
+        <% if (storageMode === 'Elasticsearch') { %>
+            <div class="alert alert-success mb-4 border-0 rounded-4" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-rocket fs-3 me-3 text-success"></i>
+                    <div>
+                        <h6 class="fw-bold mb-1"><i class="fas fa-search me-2"></i>Elasticsearch Active!</h6>
+                        <p class="mb-0">Lightning-fast email search powered by Elasticsearch. Experience instant results across all your emails!</p>
+                    </div>
+                </div>
+            </div>
+        <% } else { %>
+            <div class="alert alert-info mb-4 border-0 rounded-4" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fs-3 me-3 text-info"></i>
+                    <div>
+                        <h6 class="fw-bold mb-1"><i class="fas fa-database me-2"></i>Ready for Elasticsearch!</h6>
+                        <p class="mb-0">Currently using JSON storage. Switch to Elasticsearch in <code>config.py</code> for production-scale search capabilities.</p>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+        
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <% if (accounts && accounts.length > 0) { %>
+                <% accounts.forEach((account, index) => { %>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card stat-card h-100 border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <div class="feature-icon">
+                                    <i class="fas fa-envelope-open"></i>
+                                </div>
+                                <h5 class="card-title fw-bold text-dark">
+                                    <i class="fas fa-user-circle me-2"></i><%= account %>
+                                </h5>
+                                <p class="card-text">
+                                    <span class="badge bg-gradient-success">
+                                        <i class="fas fa-sync-alt me-1"></i>Active Sync
+                                    </span>
+                                    <br><small class="text-muted mt-2 d-block">
+                                        <i class="fas fa-clock me-1"></i>Last 30 days activity
+                                    </small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+                
+                <!-- Feature Highlights -->
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card stat-card h-100 border-0 shadow-sm bg-primary text-white">
+                        <div class="card-body text-center">
+                            <div class="feature-icon text-white">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h5 class="card-title fw-bold">AI Classification</h5>
+                            <p class="card-text">
+                                <span class="badge bg-light text-dark">
+                                    <i class="fas fa-robot me-1"></i>Smart Categories
+                                </span>
+                                <br><small class="text-light mt-2 d-block">
+                                    <i class="fas fa-magic me-1"></i>Auto-categorization
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+            <% } else { %>
+                <div class="col-12">
+                    <div class="alert alert-warning border-0 rounded-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle fs-3 me-3 text-warning"></i>
+                            <div>
+                                <h6 class="fw-bold mb-1">⚠️ No email accounts configured yet!</h6>
+                                <p class="mb-0">Please add your email accounts in <code>config.py</code> and start the sync service to begin managing your emails.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+        
+        <!-- Real-time Search Bar -->
+        <div class="card search-card mb-4 border-0">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4f46e5, #10b981);">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0 fw-bold">
+                        <i class="fas fa-search-plus me-2"></i>Instant Search
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-bolt me-1"></i>Real-time
+                        </span>
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-database me-1"></i>Elasticsearch
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="fas fa-search text-primary"></i>
+                            </span>
+                            <input type="text" class="form-control border-0 shadow-sm" 
+                                   id="instantSearch" 
+                                   placeholder="🔍 Start typing to search emails instantly..."
+                                   autocomplete="off"
+                                   style="border-radius: 0 15px 15px 0;">
+                            <button class="btn btn-outline-secondary border-0" type="button" onclick="clearInstantSearch()" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="searchSuggestions" class="mt-2" style="display: none;">
+                            <!-- Search suggestions will appear here -->
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2">
+                            <select class="form-select shadow-sm border-0" id="quickAccount" onchange="performInstantSearch()" title="Filter by account">
+                                <option value="all"><i class="fas fa-users"></i> All Accounts</option>
+                                <% if (accounts) { %>
+                                    <% accounts.forEach(account => { %>
+                                        <option value="<%= account %>">👤 <%= account %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                            <select class="form-select shadow-sm border-0" id="quickCategory" onchange="performInstantSearch()" title="Filter by category">
+                                <option value="all">📂 All Categories</option>
+                                <% if (categories) { %>
+                                    <% categories.forEach(category => { %>
+                                        <option value="<%= category %>">
+                                            <% if (category === 'Interested') { %>✅ <%= category %>
+                                            <% } else if (category === 'Meeting Booked') { %>📅 <%= category %>
+                                            <% } else if (category === 'Not Interested') { %>❌ <%= category %>
+                                            <% } else if (category === 'Spam') { %>🚫 <%= category %>
+                                            <% } else if (category === 'Out of Office') { %>🏖️ <%= category %>
+                                            <% } else { %>📂 <%= category %>
+                                            <% } %>
+                                        </option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Search Status -->
+                <div id="searchStatus" class="mt-2">
+                    <small class="text-muted">
+                        <span id="searchInfo">Type to search through <%= typeof totalEmails !== 'undefined' ? totalEmails : '0' %> emails</span>
+                        <span id="searchSpinner" style="display: none;" class="ms-2">
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            Searching...
+                        </span>
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">🔍 Advanced Email Search & Filtering</h5>
+            </div>
+            <div class="card-body">
+                <form action="/fetch-emails" method="POST" id="searchForm">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="subject" class="form-label">🔎 Search Keywords</label>
+                            <input type="text" class="form-control" name="subject" id="searchInput" 
+                                   placeholder="Search subject, sender, or content..." 
+                                   value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>">
+                            <small class="text-muted">Powered by Elasticsearch - instant search!</small>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="account" class="form-label">📧 Email Account</label>
+                            <select class="form-control" name="account" id="accountFilter">
+                                <option value="all" <%= (typeof selectedAccount !== 'undefined' && selectedAccount === 'all') ? 'selected' : '' %>>All Accounts</option>
+                                <% if (accounts) { %>
+                                    <% accounts.forEach(account => { %>
+                                        <option value="<%= account %>" <%= (typeof selectedAccount !== 'undefined' && selectedAccount === account) ? 'selected' : '' %>><%= account %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="category" class="form-label">🏷️ AI Category</label>
+                            <select class="form-control" name="category" id="categoryFilter">
+                                <option value="all" <%= (typeof selectedCategory !== 'undefined' && selectedCategory === 'all') ? 'selected' : '' %>>All Categories</option>
+                                <% if (categories) { %>
+                                    <% categories.forEach(category => { %>
+                                        <option value="<%= category %>" <%= (typeof selectedCategory !== 'undefined' && selectedCategory === category) ? 'selected' : '' %>>
+                                            <% if (category === 'Interested') { %>✅ <%= category %>
+                                            <% } else if (category === 'Meeting Booked') { %>📅 <%= category %>
+                                            <% } else if (category === 'Not Interested') { %>❌ <%= category %>
+                                            <% } else if (category === 'Spam') { %>🚫 <%= category %>
+                                            <% } else if (category === 'Out of Office') { %>🏖️ <%= category %>
+                                            <% } else { %>📂 <%= category %>
+                                            <% } %>
+                                        </option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="total" class="form-label">📊 Results Limit</label>
+                            <select class="form-control" name="total">
+                                <option value="25">25 emails</option>
+                                <option value="50" selected>50 emails</option>
+                                <option value="100">100 emails</option>
+                                <option value="250">250 emails</option>
+                                <option value="500">500 emails</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="sortBy" class="form-label">⬇️ Sort By</label>
+                            <select class="form-control" name="sortBy">
+                                <option value="date_desc">Newest First</option>
+                                <option value="date_asc">Oldest First</option>
+                                <option value="subject">Subject A-Z</option>
+                                <option value="sender">Sender A-Z</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <label for="fromDate" class="form-label">📅 From Date</label>
+                            <input type="date" class="form-control" name="fromDate" id="fromDate">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="toDate" class="form-label">📅 To Date</label>
+                            <input type="date" class="form-control" name="toDate" id="toDate">
+                        </div>
+                        
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-gradient me-2 shadow">
+                                <i class="fas fa-search me-2"></i>Search Emails
+                            </button>
+                            <button type="button" class="btn btn-success me-2 shadow" onclick="location.reload()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary shadow" onclick="clearFilters()">
+                                <i class="fas fa-times me-2"></i>Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Demo Panel for Feature Demonstration -->
+        <div class="card mb-4 border-0 shadow-lg" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+            <div class="card-header border-0 bg-transparent">
+                <h4 class="mb-0 fw-bold">
+                    <i class="fas fa-rocket me-2"></i>🚀 Feature Demonstration Panel
+                </h4>
+                <p class="mb-0 mt-2 opacity-75">Test all 6 features of your ONEBOX system</p>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fas fa-sync-alt me-2"></i>Real-Time Sync</h6>
+                            <p class="small mb-2">IMAP email synchronization</p>
+                            <span class="badge bg-success">✅ Active</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fas fa-search me-2"></i>Elasticsearch Storage</h6>
+                            <p class="small mb-2"><%= totalEmails || 0 %> emails indexed</p>
+                            <span class="badge bg-success">✅ Working</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fas fa-brain me-2"></i>AI Classification</h6>
+                            <p class="small mb-2">Smart email categorization</p>
+                            <span class="badge bg-success">✅ Working</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fab fa-slack me-2"></i>Slack Integration</h6>
+                            <p class="small mb-2">Webhook notifications</p>
+                            <span class="badge bg-success">✅ Ready</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fas fa-desktop me-2"></i>Frontend Interface</h6>
+                            <p class="small mb-2">Bootstrap UI dashboard</p>
+                            <span class="badge bg-success">✅ Active</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-feature-card p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                            <h6><i class="fas fa-magic me-2"></i>RAG AI Replies</h6>
+                            <p class="small mb-2">Vector DB + OpenAI</p>
+                            <span class="badge bg-warning">🧪 Demo Below</span>
+                        </div>
+                    </div>
+                </div>
+                <hr class="my-3" style="border-color: rgba(255,255,255,0.3);">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-light btn-sm" onclick="demoRandomReply()">
+                        <i class="fas fa-magic me-1"></i>Demo Random AI Reply
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="showRAGStats()">
+                        <i class="fas fa-chart-line me-1"></i>View RAG Statistics
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="bulkAIDemo()">
+                        <i class="fas fa-robot me-1"></i>Bulk AI Demo (5 emails)
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="showSystemStatus()">
+                        <i class="fas fa-server me-1"></i>System Status
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <% if (error) { %>
+            <div class="alert alert-danger" role="alert">
+                <strong>Error:</strong> <%= error %>
+            </div>
+        <% } %>
+
+        <% if (emails && emails.length > 0) { %>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0 gradient-header">
+                    <i class="fas fa-envelope-open-text me-2"></i>Email Results
+                </h2>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-primary fs-6 shadow-sm">
+                        <i class="fas fa-list-ol me-1"></i><%= emails.length %> emails found
+                    </span>
+                    <% if (typeof totalEmails !== 'undefined') { %>
+                        <span class="badge bg-secondary fs-6 shadow-sm">
+                            <i class="fas fa-database me-1"></i>of <%= totalEmails %> total
+                        </span>
+                    <% } %>
+                </div>
+            </div>
+            
+            <!-- Email Statistics Cards -->
+            <% if (typeof categories !== 'undefined' && categories.length > 0) { %>
+                <div class="row mb-4">
+                    <% 
+                    const categoryStats = {};
+                    emails.forEach(email => {
+                        const cat = email.category || 'Uncategorized';
+                        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+                    });
+                    %>
+                    <% Object.keys(categoryStats).forEach(category => { %>
+                        <div class="col-md-2 col-sm-4 col-6 mb-2">
+                            <div class="card text-center h-100">
+                                <div class="card-body p-2">
+                                    <div class="fs-4">
+                                        <% if (category === 'Interested') { %>✅
+                                        <% } else if (category === 'Meeting Booked') { %>📅
+                                        <% } else if (category === 'Not Interested') { %>❌
+                                        <% } else if (category === 'Spam') { %>🚫
+                                        <% } else if (category === 'Out of Office') { %>🏖️
+                                        <% } else { %>📂<% } %>
+                                    </div>
+                                    <div class="fw-bold"><%= categoryStats[category] %></div>
+                                    <small class="text-muted"><%= category %></small>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+            
+            <!-- Enhanced Email Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Email List</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="toggleView('table')">📋 Table</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="toggleView('cards')">🗃️ Cards</button>
+                    </div>
+                </div>
+                
+                <div id="tableView" class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 15%;">Account</th>
+                                <th style="width: 15%;">AI Category</th>
+                                <th style="width: 35%;">Subject</th>
+                                <th style="width: 20%;">From</th>
+                                <th style="width: 10%;">Date</th>
+                                <th style="width: 5%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% emails.forEach((email, index) => { %>
+                                <tr class="email-row" data-index="<%= index %>">
+                                    <td>
+                                        <span class="badge bg-info text-truncate d-inline-block" style="max-width: 120px;">
+                                            <%= email.account_email %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <% 
+                                        let categoryColor = 'secondary';
+                                        let categoryIcon = '📂';
+                                        if (email.category) {
+                                            switch(email.category) {
+                                                case 'Interested':
+                                                    categoryColor = 'success';
+                                                    categoryIcon = '✅';
+                                                    break;
+                                                case 'Meeting Booked':
+                                                    categoryColor = 'primary';
+                                                    categoryIcon = '📅';
+                                                    break;
+                                                case 'Not Interested':
+                                                    categoryColor = 'danger';
+                                                    categoryIcon = '❌';
+                                                    break;
+                                                case 'Spam':
+                                                    categoryColor = 'warning';
+                                                    categoryIcon = '🚫';
+                                                    break;
+                                                case 'Out of Office':
+                                                    categoryColor = 'info';
+                                                    categoryIcon = '🏖️';
+                                                    break;
+                                                default:
+                                                    categoryColor = 'secondary';
+                                                    categoryIcon = '📂';
+                                            }
+                                        }
+                                        %>
+                                        <span class="badge bg-<%= categoryColor %> mb-1">
+                                            <%= categoryIcon %> <%= email.category || 'Uncategorized' %>
+                                        </span>
+                                        <% if (email.confidence_score) { %>
+                                            <br><small class="text-muted">
+                                                <%= Math.round(email.confidence_score * 100) %>% 
+                                                <span class="badge badge-sm bg-light text-dark">
+                                                    <%= email.classification_method || 'AI' %>
+                                                </span>
+                                            </small>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-truncate" style="max-width: 300px;" title="<%= email.subject %>">
+                                            <%= email.subject %>
+                                        </div>
+                                        <% if (email.content_preview) { %>
+                                            <small class="text-muted d-block text-truncate" style="max-width: 300px;">
+                                                <%= email.content_preview.substring(0, 100) %>...
+                                            </small>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 150px;" title="<%= email.sender %>">
+                                            <%= email.sender %>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            <%= new Date(email.date_received).toLocaleDateString() %>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary view-email-btn" 
+                                                data-email-index="<%= index %>"
+                                                data-bs-toggle="modal" data-bs-target="#emailModal">
+                                            👁️
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Card View (Hidden by default) -->
+                <div id="cardsView" class="p-3" style="display: none;">
+                    <div class="row">
+                        <% emails.forEach((email, index) => { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100 email-card" data-index="<%= index %>">
+                                    <div class="card-header p-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <span class="badge bg-info text-truncate" style="max-width: 120px;">
+                                                <%= email.account_email %>
+                                            </span>
+                                            <% 
+                                            let categoryColor = 'secondary';
+                                            let categoryIcon = '📂';
+                                            if (email.category) {
+                                                switch(email.category) {
+                                                    case 'Interested':
+                                                        categoryColor = 'success';
+                                                        categoryIcon = '✅';
+                                                        break;
+                                                    case 'Meeting Booked':
+                                                        categoryColor = 'primary';
+                                                        categoryIcon = '📅';
+                                                        break;
+                                                    case 'Not Interested':
+                                                        categoryColor = 'danger';
+                                                        categoryIcon = '❌';
+                                                        break;
+                                                    case 'Spam':
+                                                        categoryColor = 'warning';
+                                                        categoryIcon = '🚫';
+                                                        break;
+                                                    case 'Out of Office':
+                                                        categoryColor = 'info';
+                                                        categoryIcon = '🏖️';
+                                                        break;
+                                                    default:
+                                                        categoryColor = 'secondary';
+                                                        categoryIcon = '📂';
+                                                }
+                                            }
+                                            %>
+                                            <span class="badge bg-<%= categoryColor %>">
+                                                <%= categoryIcon %> <%= email.category || 'Uncategorized' %>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title text-truncate" title="<%= email.subject %>">
+                                            <%= email.subject %>
+                                        </h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">From: <%= email.sender %></small><br>
+                                            <small class="text-muted">Date: <%= new Date(email.date_received).toLocaleDateString() %></small>
+                                        </p>
+                                        <% if (email.content_preview) { %>
+                                            <p class="card-text">
+                                                <small><%= email.content_preview.substring(0, 100) %>...</small>
+                                            </p>
+                                        <% } %>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-primary flex-fill view-email-btn" 
+                                                    data-email-index="<%= index %>"
+                                                    data-bs-toggle="modal" data-bs-target="#emailModal">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </button>
+                                            <button class="btn btn-sm btn-gradient flex-fill quick-reply-btn" 
+                                                    data-email-index="<%= index %>"
+                                                    onclick="quickReplyDemo(<%= index %>)">
+                                                <i class="fas fa-magic me-1"></i>AI Reply
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+        <% } else if (!error) { %>
+            <div class="alert alert-info mt-5" role="alert">
+                <h4 class="alert-heading">👋 Welcome to Real-Time Email Sync!</h4>
+                <p>Your emails are being synchronized in real-time. Use the search form above to find specific emails.</p>
+                <hr>
+                <p class="mb-0">
+                    <strong>🚀 Getting Started:</strong><br>
+                    1. Configure your accounts in <code>config.py</code><br>
+                    2. Start the sync service: <code>python email_sync_service.py</code><br>
+                    3. Emails will appear here automatically!
+                </p>
+            </div>
+        <% } %>
+        
+        <!-- Instructions -->
+        <div class="mt-5">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🔧 Real-Time Sync Service</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>To start real-time synchronization:</strong></p>
+                    <pre class="bg-light p-3"><code>python email_sync_service.py</code></pre>
+                    <p class="mt-3">This will:</p>
+                    <ul>
+                        <li>✅ Sync multiple Gmail accounts simultaneously</li>
+                        <li>✅ Fetch last 30 days of emails initially</li>
+                        <li>✅ Monitor for new emails in real-time (IDLE mode)</li>
+                        <li>✅ Store in JSON format (ready for Elasticsearch migration)</li>
+                        <li>✅ No cron jobs needed!</li>
+                    </ul>
+                    
+                    <hr>
+                    <h6>🔮 Future: Elasticsearch Integration</h6>
+                    <p>This system is designed to easily migrate to Elasticsearch for:</p>
+                    <ul>
+                        <li>⚡ Lightning-fast full-text search</li>
+                        <li>📊 Advanced analytics and aggregations</li>
+                        <li>🔍 Fuzzy search and auto-completion</li>
+                        <li>📈 Scalable storage for millions of emails</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Email Detail Modal -->
+    <div class="modal fade" id="emailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-gradient text-white" style="background: linear-gradient(135deg, #4f46e5, #10b981);">
+                    <h5 class="modal-title fw-bold" id="emailModalTitle">
+                        <i class="fas fa-envelope-open-text me-2"></i>Email Details
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="emailModalBody">
+                    <!-- Email content will be loaded here -->
+                </div>
+                <div class="modal-footer bg-light">
+                    <div class="d-flex justify-content-between w-100 align-items-center">
+                        <div>
+                            <button type="button" class="btn btn-gradient me-2" id="generateReplyBtn" onclick="generateReplysuggestion()">
+                                <i class="fas fa-magic me-2"></i>AI Reply Suggestion
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="showRAGStats()">
+                                <i class="fas fa-chart-bar me-2"></i>RAG Stats
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reply Suggestion Modal -->
+    <div class="modal fade" id="replySuggestionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-robot me-2"></i>AI-Powered Reply Suggestion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="replyLoadingSpinner" class="text-center py-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Generating suggestion...</span>
+                        </div>
+                        <p class="mt-3 text-muted">
+                            <i class="fas fa-brain me-2"></i>AI is analyzing the email and generating a personalized reply...
+                        </p>
+                    </div>
+                    
+                    <div id="replyContent" style="display: none;">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body p-3">
+                                        <h6 class="card-title fw-bold">
+                                            <i class="fas fa-cogs me-2"></i>Suggestion Details
+                                        </h6>
+                                        <p class="mb-1"><strong>Method:</strong> <span id="suggestionMethod" class="badge bg-primary"></span></p>
+                                        <p class="mb-1"><strong>Confidence:</strong> <span id="suggestionConfidence" class="badge bg-success"></span></p>
+                                        <p class="mb-0"><strong>Scenario:</strong> <span id="suggestionScenario" class="badge bg-info"></span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body p-3">
+                                        <h6 class="card-title fw-bold">
+                                            <i class="fas fa-lightbulb me-2"></i>AI Features
+                                        </h6>
+                                        <ul class="list-unstyled mb-0">
+                                            <li><i class="fas fa-check text-success me-2"></i>Context-aware</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Personalized</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Professional tone</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="suggestedReply" class="form-label fw-bold">
+                                <i class="fas fa-edit me-2"></i>Suggested Reply (Editable)
+                            </label>
+                            <textarea class="form-control" id="suggestedReply" rows="8" 
+                                    placeholder="AI-generated reply will appear here..."></textarea>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                You can edit this suggestion before using it.
+                            </small>
+                        </div>
+                        
+                        <div id="replyError" class="alert alert-danger" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="replyErrorMessage"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="copyReplyToClipboard()">
+                        <i class="fas fa-copy me-2"></i>Copy to Clipboard
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="generateAnotherSuggestion()">
+                        <i class="fas fa-sync-alt me-2"></i>Generate Another
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RAG Stats Modal -->
+    <div class="modal fade" id="ragStatsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-chart-bar me-2"></i>RAG Engine Statistics
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="ragStatsContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Loading stats...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Loading RAG engine statistics...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auto-refresh and JavaScript functionality -->
+    <script>
+        // Store emails data for modal display
+        let emailsData = [];
+        <% if (emails) { %>
+            emailsData = <%- JSON.stringify(emails) %>;
+        <% } %>
+        
+        // Instant search functionality
+        let searchTimeout;
+        let currentSearchQuery = '';
+        
+        function performInstantSearch() {
+            const queryElement = document.getElementById('instantSearch');
+            const accountElement = document.getElementById('quickAccount');
+            const categoryElement = document.getElementById('quickCategory');
+            const spinnerElement = document.getElementById('searchSpinner');
+            const infoElement = document.getElementById('searchInfo');
+            
+            if (!queryElement || !accountElement || !categoryElement || !spinnerElement || !infoElement) {
+                console.error('Search elements not found');
+                return;
+            }
+            
+            const query = queryElement.value;
+            const account = accountElement.value;
+            const category = categoryElement.value;
+            
+            // Show spinner
+            spinnerElement.style.display = 'inline-block';
+            infoElement.textContent = 'Searching...';
+            
+            // Build search URL
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (account !== 'all') params.append('account', account);
+            if (category !== 'all') params.append('category', category);
+            params.append('limit', '100');
+            
+            fetch('/api/search?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    const spinnerElement = document.getElementById('searchSpinner');
+                    const infoElement = document.getElementById('searchInfo');
+                    
+                    if (spinnerElement) spinnerElement.style.display = 'none';
+                    
+                    if (data.success) {
+                        updateEmailResults(data.emails);
+                        if (infoElement) {
+                            infoElement.textContent = `Found ${data.emails.length} emails matching your search`;
+                        }
+                    } else {
+                        console.error('Search failed:', data.error);
+                        if (infoElement) {
+                            infoElement.textContent = 'Search failed';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    const spinnerElement = document.getElementById('searchSpinner');
+                    const infoElement = document.getElementById('searchInfo');
+                    
+                    if (spinnerElement) spinnerElement.style.display = 'none';
+                    if (infoElement) {
+                        infoElement.textContent = 'Search error occurred';
+                    }
+                });
+        }
+        
+        function clearInstantSearch() {
+            const searchElement = document.getElementById('instantSearch');
+            const accountElement = document.getElementById('quickAccount');
+            const categoryElement = document.getElementById('quickCategory');
+            
+            if (searchElement) searchElement.value = '';
+            if (accountElement) accountElement.value = 'all';
+            if (categoryElement) categoryElement.value = 'all';
+            
+            location.reload(); // Reload to show all emails
+        }
+        
+        function updateEmailResults(emails) {
+            // Helper function to escape HTML
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            // Update the email table with new results
+            const tableBody = document.querySelector('#tableView tbody');
+            if (tableBody) {
+                tableBody.innerHTML = emails.map((email, index) => {
+                    const categoryInfo = getCategoryInfo(email.category);
+                    return `
+                        <tr class="email-row" data-index="${index}">
+                            <td>
+                                <span class="badge bg-info text-truncate d-inline-block" style="max-width: 120px;">
+                                    ${escapeHtml(email.account_email)}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-${categoryInfo.color} mb-1">
+                                    ${categoryInfo.icon} ${escapeHtml(email.category || 'Uncategorized')}
+                                </span>
+                                ${email.confidence_score ? `
+                                    <br><small class="text-muted">
+                                        ${Math.round(email.confidence_score * 100)}% 
+                                        <span class="badge badge-sm bg-light text-dark">
+                                            ${escapeHtml(email.classification_method || 'AI')}
+                                        </span>
+                                    </small>
+                                ` : ''}
+                            </td>
+                            <td>
+                                <div class="fw-bold text-truncate" style="max-width: 300px;" title="${escapeHtml(email.subject)}">
+                                    ${escapeHtml(email.subject)}
+                                </div>
+                                ${email.content_preview ? `
+                                    <small class="text-muted d-block text-truncate" style="max-width: 300px;">
+                                        ${escapeHtml(email.content_preview.substring(0, 100))}...
+                                    </small>
+                                ` : ''}
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 150px;" title="${escapeHtml(email.sender)}">
+                                    ${escapeHtml(email.sender)}
+                                </div>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    ${new Date(email.date_received).toLocaleDateString()}
+                                </small>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary view-email-btn" 
+                                        data-email-data="${JSON.stringify(email).replace(/"/g, '&quot;').replace(/'/g, '&#39;')}" 
+                                        data-bs-toggle="modal" data-bs-target="#emailModal">
+                                    👁️
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                // Re-attach event listeners to new buttons
+                attachEmailButtonListeners();
+            }
+        }
+        
+        function getCategoryInfo(category) {
+            switch(category) {
+                case 'Interested': return { color: 'success', icon: '✅' };
+                case 'Meeting Booked': return { color: 'primary', icon: '📅' };
+                case 'Not Interested': return { color: 'danger', icon: '❌' };
+                case 'Spam': return { color: 'warning', icon: '🚫' };
+                case 'Out of Office': return { color: 'info', icon: '🏖️' };
+                default: return { color: 'secondary', icon: '📂' };
+            }
+        }
+        
+        // Toggle between table and card view
+        function toggleView(viewType) {
+            const tableView = document.getElementById('tableView');
+            const cardsView = document.getElementById('cardsView');
+            
+            if (viewType === 'table') {
+                tableView.style.display = 'block';
+                cardsView.style.display = 'none';
+            } else {
+                tableView.style.display = 'none';
+                cardsView.style.display = 'block';
+            }
+        }
+        
+        function showEmailModal(email) {
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            document.getElementById('emailModalTitle').textContent = email.subject;
+            
+            const modalBody = document.getElementById('emailModalBody');
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>📧 Email Details</h6>
+                        <p><strong>From:</strong> ${escapeHtml(email.sender)}</p>
+                        <p><strong>Account:</strong> ${escapeHtml(email.account_email)}</p>
+                        <p><strong>Date:</strong> ${escapeHtml(new Date(email.date_received).toLocaleString())}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>🤖 AI Classification</h6>
+                        <p><strong>Category:</strong> <span class="badge bg-primary">${escapeHtml(email.category || 'Uncategorized')}</span></p>
+                        ${email.confidence_score ? `<p><strong>Confidence:</strong> ${Math.round(email.confidence_score * 100)}%</p>` : ''}
+                        ${email.classification_method ? `<p><strong>Method:</strong> ${escapeHtml(email.classification_method)}</p>` : ''}
+                    </div>
+                </div>
+                <hr>
+                <h6>📄 Subject</h6>
+                <p>${escapeHtml(email.subject)}</p>
+                ${email.content_preview ? `
+                    <h6>📝 Content Preview</h6>
+                    <div class="bg-light p-3 rounded">
+                        ${escapeHtml(email.content_preview)}
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        function attachEmailButtonListeners() {
+            // Attach event listeners to view email buttons
+            document.querySelectorAll('.view-email-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const emailIndex = this.getAttribute('data-email-index');
+                    const emailData = this.getAttribute('data-email-data');
+                    
+                    let email;
+                    if (emailData) {
+                        try {
+                            email = JSON.parse(emailData);
+                        } catch (e) {
+                            console.error('Error parsing email data:', e);
+                        }
+                    } else if (emailIndex && emailsData[emailIndex]) {
+                        email = emailsData[emailIndex];
+                    }
+                    
+                    if (email) {
+                        showEmailModal(email);
+                    }
+                });
+            });
+        }
+        
+        // Clear all filters
+        function clearFilters() {
+            const elements = {
+                searchInput: document.getElementById('searchInput'),
+                accountFilter: document.getElementById('accountFilter'),
+                categoryFilter: document.getElementById('categoryFilter'),
+                fromDate: document.getElementById('fromDate'),
+                toDate: document.getElementById('toDate'),
+                searchForm: document.getElementById('searchForm')
+            };
+            
+            if (elements.searchInput) elements.searchInput.value = '';
+            if (elements.accountFilter) elements.accountFilter.value = 'all';
+            if (elements.categoryFilter) elements.categoryFilter.value = 'all';
+            if (elements.fromDate) elements.fromDate.value = '';
+            if (elements.toDate) elements.toDate.value = '';
+            if (elements.searchForm) elements.searchForm.submit();
+        }
+        
+        // Auto-refresh functionality
+        let autoRefreshInterval;
+        
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(() => {
+                fetch('/api/stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('📊 Email stats updated:', data);
+                        updateStatsBadges(data);
+                    })
+                    .catch(error => console.error('❌ Error fetching stats:', error));
+            }, 30000); // Refresh every 30 seconds
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        function updateStatsBadges(stats) {
+            const totalEmails = stats.reduce((sum, account) => sum + account.count, 0);
+            const totalBadge = document.querySelector('.badge.bg-primary');
+            if (totalBadge && totalBadge.textContent.includes('Total Emails')) {
+                totalBadge.textContent = `${totalEmails} Total Emails`;
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            startAutoRefresh();
+            attachEmailButtonListeners();
+            
+            // Set up instant search
+            const searchInput = document.getElementById('instantSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    if (this.value.length > 2 || this.value.length === 0) {
+                        searchTimeout = setTimeout(performInstantSearch, 500);
+                    }
+                });
+            }
+            
+            console.log('🚀 Enhanced email dashboard initialized with instant search!');
+        });
+        
+        // Global variable to store current email for reply suggestions
+        let currentEmailForReply = null;
+        
+        // Generate AI reply suggestion
+        function generateReplysuggestion() {
+            if (!currentEmailForReply) {
+                alert('No email selected for reply suggestion');
+                return;
+            }
+            
+            // Show the reply suggestion modal
+            const replySuggestionModal = new bootstrap.Modal(document.getElementById('replySuggestionModal'));
+            replySuggestionModal.show();
+            
+            // Show loading spinner
+            document.getElementById('replyLoadingSpinner').style.display = 'block';
+            document.getElementById('replyContent').style.display = 'none';
+            document.getElementById('replyError').style.display = 'none';
+            
+            // Prepare request data
+            const requestData = {
+                emailContent: currentEmailForReply.body || currentEmailForReply.content_preview || '',
+                sender: currentEmailForReply.sender || '',
+                subject: currentEmailForReply.subject || ''
+            };
+            
+            // Call the API
+            fetch('/api/suggest-reply', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading spinner
+                document.getElementById('replyLoadingSpinner').style.display = 'none';
+                
+                if (data.success) {
+                    // Show suggestion content
+                    document.getElementById('replyContent').style.display = 'block';
+                    
+                    // Update suggestion details
+                    document.getElementById('suggestionMethod').textContent = data.method || 'N/A';
+                    document.getElementById('suggestionConfidence').textContent = 
+                        data.confidence ? (Math.round(data.confidence * 100) + '%') : 'N/A';
+                    document.getElementById('suggestionScenario').textContent = data.scenario || 'N/A';
+                    
+                    // Update suggested reply text
+                    document.getElementById('suggestedReply').value = data.suggestion || '';
+                    
+                    // Add success notification
+                    showNotification('✅ AI reply suggestion generated successfully!', 'success');
+                } else {
+                    // Show error
+                    document.getElementById('replyError').style.display = 'block';
+                    document.getElementById('replyErrorMessage').textContent = 
+                        data.error || 'Failed to generate reply suggestion';
+                        
+                    showNotification('❌ Failed to generate reply suggestion', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error generating reply suggestion:', error);
+                
+                // Hide loading spinner and show error
+                document.getElementById('replyLoadingSpinner').style.display = 'none';
+                document.getElementById('replyError').style.display = 'block';
+                document.getElementById('replyErrorMessage').textContent = 
+                    'Network error occurred while generating suggestion';
+                    
+                showNotification('❌ Network error occurred', 'error');
+            });
+        }
+        
+        // Copy reply to clipboard
+        function copyReplyToClipboard() {
+            const replyText = document.getElementById('suggestedReply').value;
+            if (!replyText) {
+                showNotification('No reply text to copy', 'warning');
+                return;
+            }
+            
+            // Create temporary textarea and copy text
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = replyText;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showNotification('✅ Reply copied to clipboard!', 'success');
+            } catch (err) {
+                showNotification('❌ Failed to copy to clipboard', 'error');
+            }
+            
+            document.body.removeChild(tempTextarea);
+        }
+        
+        // Generate another suggestion
+        function generateAnotherSuggestion() {
+            // Close the current modal and regenerate
+            document.getElementById('suggestedReply').value = '';
+            generateReplysuggestion();
+        }
+        
+        // Show RAG engine statistics
+        function showRAGStats() {
+            const ragStatsModal = new bootstrap.Modal(document.getElementById('ragStatsModal'));
+            ragStatsModal.show();
+            
+            // Fetch RAG stats
+            fetch('/api/rag-stats')
+                .then(response => response.json())
+                .then(data => {
+                    let statsHTML = '';
+                    
+                    if (data.status === 'active') {
+                        statsHTML = `
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title fw-bold">
+                                                <i class="fas fa-database me-2"></i>Vector Database
+                                            </h6>
+                                            <p class="mb-1"><strong>Templates:</strong> ${data.vector_database?.total_templates || 0}</p>
+                                            <p class="mb-1"><strong>Status:</strong> 
+                                                <span class="badge bg-success">${data.vector_database?.status || 'Unknown'}</span>
+                                            </p>
+                                            <p class="mb-0"><strong>Collection:</strong> ${data.vector_database?.collection_name || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title fw-bold">
+                                                <i class="fas fa-brain me-2"></i>AI Configuration
+                                            </h6>
+                                            <p class="mb-1"><strong>OpenAI:</strong> 
+                                                <span class="badge ${data.openai_enabled ? 'bg-success' : 'bg-warning'}">
+                                                    ${data.openai_enabled ? 'Enabled' : 'Disabled'}
+                                                </span>
+                                            </p>
+                                            <p class="mb-1"><strong>User:</strong> ${data.user_context?.name || 'N/A'}</p>
+                                            <p class="mb-0"><strong>Calendar:</strong> 
+                                                <a href="${data.user_context?.calendar_link || '#'}" target="_blank">
+                                                    ${data.user_context?.calendar_link ? 'Available' : 'Not set'}
+                                                </a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="card border-0 bg-primary text-white">
+                                        <div class="card-body">
+                                            <h6 class="card-title fw-bold">
+                                                <i class="fas fa-cogs me-2"></i>Engine Status
+                                            </h6>
+                                            <p class="mb-0">
+                                                RAG (Retrieval-Augmented Generation) engine is active and ready for intelligent reply suggestions.
+                                                Vector similarity search combined with ${data.openai_enabled ? 'OpenAI GPT' : 'template-based'} generation.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        statsHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                RAG engine is not available. Error: ${data.error || 'Unknown error'}
+                            </div>
+                        `;
+                    }
+                    
+                    document.getElementById('ragStatsContent').innerHTML = statsHTML;
+                })
+                .catch(error => {
+                    console.error('Error fetching RAG stats:', error);
+                    document.getElementById('ragStatsContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Failed to load RAG statistics: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+        
+        // Show notification function
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+        
+        // Update showEmailModal function to store current email for reply suggestions
+        function showEmailModal(email) {
+            // Store email for reply suggestions
+            currentEmailForReply = email;
+            
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            document.getElementById('emailModalTitle').innerHTML = `
+                <i class="fas fa-envelope-open-text me-2"></i>${escapeHtml(email.subject)}
+            `;
+            
+            const modalBody = document.getElementById('emailModalBody');
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle me-2"></i>Email Details</h6>
+                        <p><strong>From:</strong> ${escapeHtml(email.sender)}</p>
+                        <p><strong>Account:</strong> ${escapeHtml(email.account_email)}</p>
+                        <p><strong>Date:</strong> ${escapeHtml(new Date(email.date_received).toLocaleString())}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-robot me-2"></i>AI Classification</h6>
+                        <p><strong>Category:</strong> <span class="badge bg-primary">${escapeHtml(email.category || 'Uncategorized')}</span></p>
+                        ${email.confidence_score ? `<p><strong>Confidence:</strong> ${Math.round(email.confidence_score * 100)}%</p>` : ''}
+                        ${email.classification_method ? `<p><strong>Method:</strong> ${escapeHtml(email.classification_method)}</p>` : ''}
+                    </div>
+                </div>
+                <hr>
+                <h6><i class="fas fa-envelope me-2"></i>Subject</h6>
+                <p>${escapeHtml(email.subject)}</p>
+                ${email.body || email.content_preview ? `
+                    <h6><i class="fas fa-file-text me-2"></i>Content</h6>
+                    <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
+                        <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(email.body || email.content_preview)}</pre>
+                    </div>
+                ` : ''}
+                
+                ${email.category === 'Interested' ? `
+                    <div class="alert alert-success mt-3" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>AI Suggestion Available!</strong> This email is categorized as "Interested" - perfect for AI-powered reply suggestions.
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        // Stop auto-refresh when page unloads
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+    
+    <!-- Modern Footer -->
+    <footer class="footer mt-5 py-5 px-4">
+        <div class="container">
+            <div class="row g-4">
+                <!-- Company Info -->
+                <div class="col-lg-4 col-md-6">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-inbox me-2"></i>ONEBOX
+                    </h5>
+                    <p class="text-light mb-3">
+                        Advanced email management platform with AI-powered classification, 
+                        real-time synchronization, and intelligent automation.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="https://github.com/18vikastg" target="_blank" class="text-decoration-none">
+                            <i class="fab fa-github fs-4"></i>
+                        </a>
+                        <a href="https://www.linkedin.com/in/vikas-t-g-09692325a/" target="_blank" class="text-decoration-none">
+                            <i class="fab fa-linkedin fs-4"></i>
+                        </a>
+                        <a href="#" class="text-decoration-none">
+                            <i class="fab fa-twitter fs-4"></i>
+                        </a>
+                        <a href="#" class="text-decoration-none">
+                            <i class="fab fa-discord fs-4"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Features -->
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="fw-bold mb-3">Features</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-sync-alt me-2"></i>Real-time Sync
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-brain me-2"></i>AI Classification
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-search me-2"></i>Smart Search
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-webhook me-2"></i>Slack Integration
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Technology -->
+                <div class="col-lg-3 col-md-6">
+                    <h6 class="fw-bold mb-3">Technology Stack</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-secondary">
+                            <i class="fab fa-python me-1"></i>Python
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="fab fa-node-js me-1"></i>Node.js
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-database me-1"></i>Elasticsearch
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="fab fa-docker me-1"></i>Docker
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-robot me-1"></i>OpenAI
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="fab fa-bootstrap me-1"></i>Bootstrap
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-light">
+                            <i class="fas fa-code me-1"></i>Built with modern web technologies
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Support -->
+                <div class="col-lg-3 col-md-6">
+                    <h6 class="fw-bold mb-3">Support & Resources</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-book me-2"></i>Documentation
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-question-circle me-2"></i>FAQ
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-headset me-2"></i>Support
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-decoration-none">
+                                <i class="fas fa-bug me-2"></i>Report Issues
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Copyright Section -->
+            <hr class="my-4 border-secondary">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-light">
+                        © 2025 <strong>ONEBOX</strong>. All rights reserved.
+                        <br><small class="text-muted">
+                            Built for the ONEBOX Backend Engineering Assignment
+                        </small>
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-flex justify-content-md-end align-items-center gap-3 mt-3 mt-md-0">
+                        <span class="badge bg-success">
+                            <i class="fas fa-shield-alt me-1"></i>Secure
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="fas fa-lock me-1"></i>Privacy First
+                        </span>
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-bolt me-1"></i>High Performance
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-heart text-danger me-1"></i>
+                            Made with passion for email management
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    </div> <!-- End main-container -->
+    </div> <!-- End container-fluid -->
+    
+    <script>
+        // Enhanced Demo Functions for Feature Demonstration
+        
+        // Quick reply demo for individual emails
+        function quickReplyDemo(emailIndex) {
+            if (!emailsData || !emailsData[emailIndex]) {
+                showNotification('❌ Email data not found', 'error');
+                return;
+            }
+            
+            const email = emailsData[emailIndex];
+            
+            // Show demo notification
+            showNotification('🚀 Generating AI reply for: ' + email.subject.substring(0, 50) + '...', 'info');
+            
+            // Set current email and generate reply
+            currentEmailForReply = email;
+            generateReplysuggestion();
+        }
+        
+        // Demo random email reply generation
+        function demoRandomReply() {
+            if (!emailsData || emailsData.length === 0) {
+                showNotification('❌ No emails available for demo', 'error');
+                return;
+            }
+            
+            // Pick a random email
+            const randomIndex = Math.floor(Math.random() * Math.min(emailsData.length, 10));
+            const randomEmail = emailsData[randomIndex];
+            
+            showNotification('🎲 Demonstrating AI reply for random email...', 'info');
+            
+            // Set current email and generate reply
+            currentEmailForReply = randomEmail;
+            generateReplysuggestion();
+        }
+        
+        // Bulk AI demo - generate replies for multiple emails
+        function bulkAIDemo() {
+            if (!emailsData || emailsData.length === 0) {
+                showNotification('❌ No emails available for bulk demo', 'error');
+                return;
+            }
+            
+            showNotification('🔄 Starting bulk AI demo for 5 emails...', 'info');
+            
+            const demoEmails = emailsData.slice(0, 5);
+            let completedCount = 0;
+            
+            // Create a demo results modal
+            const demoModal = document.createElement('div');
+            demoModal.className = 'modal fade';
+            demoModal.id = 'bulkDemoModal';
+            demoModal.innerHTML = `
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header bg-gradient text-white" style="background: linear-gradient(135deg, #4f46e5, #10b981);">
+                            <h5 class="modal-title">🤖 Bulk AI Reply Demo Results</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="bulkDemoResults">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Processing...</span>
+                                </div>
+                                <p class="mt-3">Processing ${demoEmails.length} emails...</p>
+                                <div class="progress">
+                                    <div class="progress-bar" id="bulkProgress" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(demoModal);
+            const modal = new bootstrap.Modal(demoModal);
+            modal.show();
+            
+            // Process emails one by one
+            demoEmails.forEach((email, index) => {
+                setTimeout(() => {
+                    fetch('/api/suggest-reply', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            emailContent: email.body || email.content_preview || '',
+                            sender: email.sender || '',
+                            subject: email.subject || ''
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        completedCount++;
+                        const progress = (completedCount / demoEmails.length) * 100;
+                        document.getElementById('bulkProgress').style.width = progress + '%';
+                        
+                        if (completedCount === 1) {
+                            document.getElementById('bulkDemoResults').innerHTML = '<div class="row g-3"></div>';
+                        }
+                        
+                        // Add result card
+                        const resultCard = `
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0 text-truncate">${email.subject}</h6>
+                                        <small class="text-muted">From: ${email.sender}</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="small text-muted">
+                                            Scenario: <span class="badge bg-info">${data.scenario || 'N/A'}</span>
+                                            Confidence: <span class="badge bg-success">${data.confidence ? (data.confidence * 100).toFixed(1) + '%' : 'N/A'}</span>
+                                        </p>
+                                        <textarea class="form-control" rows="4" readonly>${data.suggestion || 'No suggestion generated'}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        document.querySelector('#bulkDemoResults .row').innerHTML += resultCard;
+                        
+                        if (completedCount === demoEmails.length) {
+                            showNotification('✅ Bulk AI demo completed!', 'success');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error in bulk demo:', error);
+                        completedCount++;
+                    });
+                }, index * 1000); // 1 second delay between requests
+            });
+        }
+        
+        // Show system status
+        function showSystemStatus() {
+            fetch('/api/rag-stats')
+                .then(response => response.json())
+                .then(data => {
+                    const statusModal = document.createElement('div');
+                    statusModal.className = 'modal fade';
+                    statusModal.id = 'systemStatusModal';
+                    statusModal.innerHTML = `
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header bg-info text-white">
+                                    <h5 class="modal-title">🖥️ System Status Dashboard</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card border-success">
+                                                <div class="card-body text-center">
+                                                    <h5 class="text-success">📊 Email Database</h5>
+                                                    <h3>${emailsData ? emailsData.length : 0}</h3>
+                                                    <p class="mb-0">Indexed Emails</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-primary">
+                                                <div class="card-body text-center">
+                                                    <h5 class="text-primary">🤖 RAG Templates</h5>
+                                                    <h3>${data.vector_database ? data.vector_database.total_templates : 0}</h3>
+                                                    <p class="mb-0">Training Templates</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-warning">
+                                                <div class="card-body text-center">
+                                                    <h5 class="text-warning">🧠 OpenAI Status</h5>
+                                                    <h3>${data.openai_enabled ? '✅' : '❌'}</h3>
+                                                    <p class="mb-0">${data.openai_enabled ? 'Connected' : 'Disabled'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-info">
+                                                <div class="card-body text-center">
+                                                    <h5 class="text-info">📡 System Status</h5>
+                                                    <h3>🟢</h3>
+                                                    <p class="mb-0">All Systems Operational</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <h6>User Context:</h6>
+                                    <pre class="bg-light p-3 rounded">${JSON.stringify(data.user_context || {}, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(statusModal);
+                    const modal = new bootstrap.Modal(statusModal);
+                    modal.show();
+                })
+                .catch(error => {
+                    showNotification('❌ Failed to fetch system status', 'error');
+                });
+        }
+        
+        // Enhanced RAG stats with better visualization
+        function showRAGStats() {
+            fetch('/api/rag-stats')
+                .then(response => response.json())
+                .then(data => {
+                    const statsModal = document.createElement('div');
+                    statsModal.className = 'modal fade';
+                    statsModal.id = 'ragStatsModal';
+                    statsModal.innerHTML = `
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                                    <h5 class="modal-title">📊 RAG Engine Statistics</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-4">
+                                            <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                                <h4 class="text-primary">${data.vector_database ? data.vector_database.total_templates : 0}</h4>
+                                                <p class="mb-0">Vector Templates</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                                                <h4 class="text-success">${data.openai_enabled ? 'ON' : 'OFF'}</h4>
+                                                <p class="mb-0">OpenAI Integration</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                                                <h4 class="text-info">${data.status || 'Unknown'}</h4>
+                                                <p class="mb-0">Engine Status</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <h6>📦 Database Collection:</h6>
+                                    <ul class="list-group mb-3">
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Collection Name:</span>
+                                            <strong>${data.vector_database ? data.vector_database.collection_name : 'N/A'}</strong>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Total Templates:</span>
+                                            <strong>${data.vector_database ? data.vector_database.total_templates : 0}</strong>
+                                        </li>
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>Database Status:</span>
+                                            <strong class="text-success">${data.vector_database ? data.vector_database.status : 'Unknown'}</strong>
+                                        </li>
+                                    </ul>
+                                    
+                                    <h6>👤 User Configuration:</h6>
+                                    <div class="bg-light p-3 rounded">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Name:</strong> ${data.user_context ? data.user_context.name : 'N/A'}<br>
+                                                <strong>Role:</strong> ${data.user_context ? data.user_context.current_role : 'N/A'}
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Email:</strong> ${data.user_context ? data.user_context.email : 'N/A'}<br>
+                                                <strong>Calendar:</strong> ${data.user_context ? data.user_context.calendar_link : 'N/A'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" onclick="demoRandomReply()">
+                                        <i class="fas fa-magic me-2"></i>Test RAG Now
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(statsModal);
+                    const modal = new bootstrap.Modal(statsModal);
+                    modal.show();
+                })
+                .catch(error => {
+                    showNotification('❌ Failed to fetch RAG statistics', 'error');
+                    console.error('RAG stats error:', error);
+                });
+        }
+        
+        // Auto-demo mode for presentations
+        function startAutoDemo() {
+            showNotification('🎬 Starting auto-demo presentation...', 'info');
+            
+            setTimeout(() => demoRandomReply(), 2000);
+            setTimeout(() => showRAGStats(), 8000);
+            setTimeout(() => bulkAIDemo(), 15000);
+        }
+    </script>
+</body>
+</html>
